@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Tortillas - Fábrica</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; font-size: 24px; }
+        .section { margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
+        h2 { font-size: 18px; margin-top: 0; color: #495057; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        select, input { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; padding: 10px 15px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; }
+        button:hover { background: #218838; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; font-size: 14px; }
+        th { background: #e9ecef; }
+        .out { background: #dc3545; }
+        .out:hover { background: #c82333; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Control de Stock y Producción - Fábrica de Tortillas</h1>
+
+    <!-- FORMULARIO DE MOVIMIENTOS -->
+    <div class="section">
+        <h2>Registrar Entrada (Producción) o Salida (Venta/Despacho)</h2>
+        <label>Producto:</label>
+        <select id="producto">
+            <option value="MAIZ TACO">MAIZ TACO</option>
+            <option value="TRIGO 20CM">TRIGO 20CM</option>
+            <option value="TRIGO 25CM">TRIGO 25CM</option>
+            <option value="TRIGO 30CM">TRIGO 30CM</option>
+            <option value="TRIGO 32CM">TRIGO 32CM</option>
+            <option value="NACHOS FRITOS">NACHOS FRITOS</option>
+            <option value="MAIZ CORTADO">MAIZ CORTADO</option>
+        </select>
+
+        <label>Cantidad (Paquetes / Kilos):</label>
+        <input type="number" id="cantidad" placeholder="Ej. 100" min="1">
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="registrar('entrada')">➕ Registrar Producción (Entrada)</button>
+            <button class="out" onclick="registrar('salida')">➖ Registrar Salida (Venta/Despacho)</button>
+        </div>
+    </div>
+
+    <!-- TABLA DE STOCK ACTUAL -->
+    <div class="section">
+        <h2>Stock Actual en Bodega</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Stock Actual (Paquetes/Kilos)</th>
+                </tr>
+            </thead>
+            <tbody id="tablaStock">
+                <!-- Se llena con JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let productosBase = ["MAIZ TACO", "TRIGO 20CM", "TRIGO 25CM", "TRIGO 30CM", "TRIGO 32CM", "NACHOS FRITOS", "MAIZ CORTADO"];
+    let stock = JSON.parse(localStorage.getItem('stock_tortillas')) || {};
+
+    productosBase.forEach(p => {
+        if (stock[p] === undefined) stock[p] = 0;
+    });
+
+    function actualizarVista() {
+        let html = '';
+        for (let p in stock) {
+            html += `<tr><td><b>${p}</b></td><td>${stock[p]}</td></tr>`;
+        }
+        document.getElementById('tablaStock').innerHTML = html;
+        localStorage.setItem('stock_tortillas', JSON.stringify(stock));
+    }
+
+    function registrar(tipo) {
+        let producto = document.getElementById('producto').value;
+        let cantidad = parseInt(document.getElementById('cantidad').value);
+
+        if (isNaN(cantidad) || cantidad <= 0) {
+            alert("Por favor ingresa una cantidad válida.");
+            return;
+        }
+
+        if (tipo === 'entrada') {
+            stock[producto] += cantidad;
+        } else {
+            if (stock[producto] < cantidad) {
+                alert("¡Cuidado! No hay suficiente stock para esta salida.");
+                return;
+            }
+            stock[producto] -= cantidad;
+        }
+
+        document.getElementById('cantidad').value = '';
+        actualizarVista();
+    }
+
+    actualizarVista();
+</script>
+
+</body>
+</html>
