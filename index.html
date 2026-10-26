@@ -44,21 +44,38 @@
         </div>
     </div>
 
-    <!-- TABLA DE STOCK ACTUAL Y VALORIZADO -->
+    <!-- TABLA 1: TORTILLAS DE TRIGO (UNIDADES Y PAQUETES DE 100) -->
     <div class="section">
-        <h2>Inventario Actual y Valor del Stock</h2>
+        <h2>Inventario - Tortillas de Trigo (Unidades / Paquetes de 100 u.)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Unidades Totales</th>
+                    <th>Paquetes (de 100 u.)</th>
+                    <th>Precio Unitario</th>
+                    <th>Valor Total Stock</th>
+                </tr>
+            </thead>
+            <tbody id="tablaTrigo"></tbody>
+        </table>
+    </div>
+
+    <!-- TABLA 2: MAÍZ Y NACHOS (KILOS Y PAQUETES DE 6KG) -->
+    <div class="section">
+        <h2>Inventario - Maíz y Nachos (Kilos / Paquetes)</h2>
         <table>
             <thead>
                 <tr>
                     <th>Producto</th>
                     <th>Unidad de Medida</th>
-                    <th>Stock Base</th>
-                    <th>Paquetes</th>
+                    <th>Kilos Totales</th>
+                    <th>Paquetes / Conversión</th>
                     <th>Precio Unitario</th>
                     <th>Valor Total Stock</th>
                 </tr>
             </thead>
-            <tbody id="tablaStock"></tbody>
+            <tbody id="tablaMaiz"></tbody>
         </table>
         <div class="total-box" id="valorTotalGeneral">Valor Total Inventario: $0.00</div>
     </div>
@@ -72,11 +89,11 @@
                 <input type="text" id="nuevoNombre" placeholder="Ej. TRIGO 35CM">
             </div>
             <div>
-                <label>Tipo de Unidad:</label>
+                <label>Tipo de Categoría:</label>
                 <select id="nuevaUnidad">
-                    <option value="Trigo (Paquetes 100 u.)">Trigo (Paquetes 100 u.)</option>
-                    <option value="Maíz Cortado (Paq. 6kg)">Maíz Cortado (Paq. 6kg)</option>
-                    <option value="Kilos (General)">Kilos (General)</option>
+                    <option value="Trigo">Trigo (Unidades / Paq. 100 u.)</option>
+                    <option value="Maíz Cortado">Maíz Cortado (Kilos / Paq. 6kg)</option>
+                    <option value="Kilos General">Kilos (General - Maíz Taco / Nachos)</option>
                 </select>
             </div>
             <div>
@@ -92,7 +109,7 @@
             <thead>
                 <tr>
                     <th>Producto</th>
-                    <th>Unidad</th>
+                    <th>Categoría</th>
                     <th>Precio</th>
                     <th>Acciones</th>
                 </tr>
@@ -138,24 +155,25 @@
 
 <script>
     let productosIniciales = [
-        { nombre: "TRIGO 20CM", unidad: "Trigo (Paquetes 100 u.)", precio: 1.00, stock: 0 },
-        { nombre: "TRIGO 25CM", unidad: "Trigo (Paquetes 100 u.)", precio: 1.70, stock: 0 },
-        { nombre: "TRIGO 30CM", unidad: "Trigo (Paquetes 100 u.)", precio: 2.00, stock: 0 },
-        { nombre: "TRIGO 32CM", unidad: "Trigo (Paquetes 100 u.)", precio: 2.30, stock: 0 },
-        { nombre: "MAIZ TACO", unidad: "Kilos (General)", precio: 30.00, stock: 0 },
-        { nombre: "MAIZ CORTADO", unidad: "Maíz Cortado (Paq. 6kg)", precio: 30.00, stock: 0 },
-        { nombre: "NACHOS CHICA MARIA", unidad: "Kilos (General)", precio: 47.00, stock: 0 }
+        { nombre: "TRIGO 20CM", unidad: "Trigo", precio: 1.00, stock: 0 },
+        { nombre: "TRIGO 25CM", unidad: "Trigo", precio: 1.70, stock: 0 },
+        { nombre: "TRIGO 30CM", unidad: "Trigo", precio: 2.00, stock: 0 },
+        { nombre: "TRIGO 32CM", unidad: "Trigo", precio: 2.30, stock: 0 },
+        { nombre: "MAIZ TACO", unidad: "Kilos General", precio: 30.00, stock: 0 },
+        { nombre: "MAIZ CORTADO", unidad: "Maíz Cortado", precio: 30.00, stock: 0 },
+        { nombre: "NACHOS CHICA MARIA", unidad: "Kilos General", precio: 47.00, stock: 0 }
     ];
 
-    let productos = JSON.parse(localStorage.getItem('productos_tortillas')) || productosIniciales;
-    let clientes = JSON.parse(localStorage.getItem('clientes_tortillas')) || [];
+    let productos = JSON.parse(localStorage.getItem('productos_tortillas_sep')) || productosIniciales;
+    let clientes = JSON.parse(localStorage.getItem('clientes_tortillas_sep')) || [];
     
     let editandoIndex = null;
     let editandoClienteIndex = null;
 
     function actualizarTodo() {
         let selectHtml = '';
-        let tablaStockHtml = '';
+        let tablaTrigoHtml = '';
+        let tablaMaizHtml = '';
         let tablaGestionHtml = '';
         let valorTotalGeneral = 0;
 
@@ -165,27 +183,37 @@
             let valorStock = p.stock * p.precio;
             valorTotalGeneral += valorStock;
 
-            let colPaquetes = "-";
-            if (p.unidad.includes("Trigo")) {
-                let paqTrigo = (p.stock / 100).toFixed(1);
-                colPaquetes = `${paqTrigo} paq. (${p.stock} un.)`;
-            } else if (p.unidad.includes("Maíz Cortado")) {
-                let paqMaiz = (p.stock / 6).toFixed(1);
-                colPaquetes = `${paqMaiz} paq. de 6kg`;
+            if (p.unidad === "Trigo") {
+                let paquetesTrigo = (p.stock / 100).toFixed(1);
+                tablaTrigoHtml += `
+                    <tr>
+                        <td><b>${p.nombre}</b></td>
+                        <td><b>${p.stock} un.</b></td>
+                        <td>${paquetesTrigo} paq. (100 u.)</td>
+                        <td>$${p.precio.toFixed(2)}</td>
+                        <td><b>$${valorStock.toFixed(2)}</b></td>
+                    </tr>
+                `;
             } else {
-                colPaquetes = `${p.stock} kg`;
-            }
+                let conversion = "-";
+                if (p.unidad === "Maíz Cortado") {
+                    let paqMaiz = (p.stock / 6).toFixed(1);
+                    conversion = `${paqMaiz} paq. de 6kg`;
+                } else {
+                    conversion = `${p.stock} kg`;
+                }
 
-            tablaStockHtml += `
-                <tr>
-                    <td><b>${p.nombre}</b></td>
-                    <td>${p.unidad}</td>
-                    <td><b>${p.stock}</b></td>
-                    <td>${colPaquetes}</td>
-                    <td>$${p.precio.toFixed(2)}</td>
-                    <td><b>$${valorStock.toFixed(2)}</b></td>
-                </tr>
-            `;
+                tablaMaizHtml += `
+                    <tr>
+                        <td><b>${p.nombre}</b></td>
+                        <td>${p.unidad}</td>
+                        <td><b>${p.stock} kg</b></td>
+                        <td>${conversion}</td>
+                        <td>$${p.precio.toFixed(2)}</td>
+                        <td><b>$${valorStock.toFixed(2)}</b></td>
+                    </tr>
+                `;
+            }
 
             tablaGestionHtml += `
                 <tr>
@@ -201,7 +229,8 @@
         });
 
         document.getElementById('productoSelect').innerHTML = selectHtml;
-        document.getElementById('tablaStock').innerHTML = tablaStockHtml;
+        document.getElementById('tablaTrigo').innerHTML = tablaTrigoHtml || `<tr><td colspan="5">No hay productos de trigo registrados.</td></tr>`;
+        document.getElementById('tablaMaiz').innerHTML = tablaMaizHtml || `<tr><td colspan="6">No hay productos de maíz registrados.</td></tr>`;
         document.getElementById('tablaGestion').innerHTML = tablaGestionHtml;
         document.getElementById('valorTotalGeneral').innerText = `Valor Total Inventario: $${valorTotalGeneral.toFixed(2)}`;
 
@@ -221,8 +250,8 @@
         });
         document.getElementById('tablaClientes').innerHTML = tablaClientesHtml;
 
-        localStorage.setItem('productos_tortillas', JSON.stringify(productos));
-        localStorage.setItem('clientes_tortillas', JSON.stringify(clientes));
+        localStorage.setItem('productos_tortillas_sep', JSON.stringify(productos));
+        localStorage.setItem('clientes_tortillas_sep', JSON.stringify(clientes));
         actualizarLabelCantidad();
     }
 
@@ -230,12 +259,10 @@
         let index = document.getElementById('productoSelect').value;
         if(productos[index]) {
             let p = productos[index];
-            if(p.unidad.includes("Trigo")) {
-                document.getElementById('labelCantidad').innerText = "Cantidad (en Unidades sueltas de trigo):";
-            } else if(p.unidad.includes("Maíz Cortado")) {
-                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos totales):";
+            if(p.unidad === "Trigo") {
+                document.getElementById('labelCantidad').innerText = "Cantidad (en Unidades totales de trigo):";
             } else {
-                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos):";
+                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos totales):";
             }
         }
     }
