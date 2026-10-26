@@ -238,7 +238,12 @@
                 fecha: new Date().toISOString()
             });
 
+            // LIMPIAR CAMPOS DE VENTA
             document.getElementById('ventaCantidad').value = '';
+            document.getElementById('ventaClienteSelect.selectedIndex'] = 0;
+            document.getElementById('ventaProductoSelect.selectedIndex'] = 0;
+            window.actualizarPrecioVenta();
+
             alert("¡Venta registrada con éxito y stock actualizado en la nube!");
         };
 
@@ -255,7 +260,10 @@
             let nuevoStock = (p.stock || 0) + cantidad;
 
             await updateDoc(doc(db, "tortillas_productos", p.id), { stock: nuevoStock });
+            
+            // LIMPIAR CAMPO DE STOCK
             document.getElementById('stockCantidad').value = '';
+
             alert("¡Producción registrada en la nube!");
         };
 
@@ -285,6 +293,7 @@
                 await setDoc(doc(db, "tortillas_productos", nuevoId), { nombre, unidad, precio, stock: 0 });
             }
 
+            // LIMPIAR CAMPOS DE PRODUCTO
             document.getElementById('nuevoNombre').value = '';
             document.getElementById('nuevoPrecio').value = '';
         };
@@ -319,6 +328,7 @@
                 await setDoc(doc(db, "tortillas_clientes", nuevoId), { nombre, telefono, direccion });
             }
 
+            // LIMPIAR CAMPOS DE CLIENTE AUTOMÁTICAMENTE
             document.getElementById('clienteNombre').value = '';
             document.getElementById('clienteTelefono').value = '';
             document.getElementById('clienteDireccion').value = '';
