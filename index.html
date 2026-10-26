@@ -6,7 +6,7 @@
     <title>Control de Tortillas - Fábrica</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; font-size: 24px; }
         .section { margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
         h2 { font-size: 18px; margin-top: 0; color: #495057; }
@@ -15,33 +15,28 @@
         button { background: #28a745; color: white; border: none; padding: 10px 15px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; }
         button:hover { background: #218838; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
-        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; font-size: 14px; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; font-size: 13px; }
         th { background: #e9ecef; }
         .out { background: #dc3545; }
         .out:hover { background: #c82333; }
+        .btn-edit { background: #007bff; padding: 5px 10px; font-size: 12px; width: auto; }
+        .btn-edit:hover { background: #0056b3; }
+        .total-box { font-size: 18px; font-weight: bold; text-align: right; margin-top: 15px; color: #2c3e50; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Control de Stock y Producción - Fábrica de Tortillas</h1>
+    <h1>Control de Stock, Producción y Valorizado - Fábrica</h1>
 
     <!-- FORMULARIO DE MOVIMIENTOS -->
     <div class="section">
         <h2>Registrar Entrada (Producción) o Salida (Venta/Despacho)</h2>
         <label>Producto:</label>
-        <select id="producto">
-            <option value="MAIZ TACO">MAIZ TACO</option>
-            <option value="TRIGO 20CM">TRIGO 20CM</option>
-            <option value="TRIGO 25CM">TRIGO 25CM</option>
-            <option value="TRIGO 30CM">TRIGO 30CM</option>
-            <option value="TRIGO 32CM">TRIGO 32CM</option>
-            <option value="NACHOS FRITOS">NACHOS FRITOS</option>
-            <option value="MAIZ CORTADO">MAIZ CORTADO</option>
-        </select>
+        <select id="productoSelect"></select>
 
-        <label>Cantidad (Paquetes / Kilos):</label>
-        <input type="number" id="cantidad" placeholder="Ej. 100" min="1">
+        <label id="labelCantidad">Cantidad:</label>
+        <input type="number" id="cantidad" placeholder="Ej. 10" min="0.1" step="any">
 
         <div style="display: flex; gap: 10px;">
             <button onclick="registrar('entrada')">➕ Registrar Producción (Entrada)</button>
@@ -49,43 +44,123 @@
         </div>
     </div>
 
-    <!-- TABLA DE STOCK ACTUAL -->
+    <!-- TABLA DE STOCK ACTUAL Y VALORIZADO -->
     <div class="section">
-        <h2>Stock Actual en Bodega</h2>
+        <h2>Inventario Actual y Valor del Stock</h2>
         <table>
             <thead>
                 <tr>
                     <th>Producto</th>
-                    <th>Stock Actual (Paquetes/Kilos)</th>
+                    <th>Unidad de Medida</th>
+                    <th>Stock Actual</th>
+                    <th>Precio Unitario</th>
+                    <th>Valor Total Stock</th>
                 </tr>
             </thead>
-            <tbody id="tablaStock">
-                <!-- Se llena con JavaScript -->
-            </tbody>
+            <tbody id="tablaStock"></tbody>
+        </table>
+        <div class="total-box" id="valorTotalGeneral">Valor Total Inventario: $0.00</div>
+    </div>
+
+    <!-- GESTIÓN DE PRODUCTOS (CREAR / EDITAR PRECIOS) -->
+    <div class="section">
+        <h2>Gestionar Productos y Precios</h2>
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: end;">
+            <div>
+                <label>Nombre del Producto:</label>
+                <input type="text" id="nuevoNombre" placeholder="Ej. TRIGO 35CM">
+            </div>
+            <div>
+                <label>Unidad:</label>
+                <select id="nuevaUnidad">
+                    <option value="Paquetes (100 u.)">Paquetes (100 u.)</option>
+                    <option value="Kilos">Kilos</option>
+                </select>
+            </div>
+            <div>
+                <label>Precio ($):</label>
+                <input type="number" id="nuevoPrecio" placeholder="0.00" step="0.01">
+            </div>
+            <div>
+                <button onclick="guardarProducto()">💾 Guardar / Añadir</button>
+            </div>
+        </div>
+
+        <table style="margin-top: 15px;">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Unidad</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaGestion"></tbody>
         </table>
     </div>
 </div>
 
 <script>
-    let productosBase = ["MAIZ TACO", "TRIGO 20CM", "TRIGO 25CM", "TRIGO 30CM", "TRIGO 32CM", "NACHOS FRITOS", "MAIZ CORTADO"];
-    let stock = JSON.parse(localStorage.getItem('stock_tortillas')) || {};
+    // Productos iniciales configurados con tus precios y unidades
+    let productosIniciales = [
+        { nombre: "TRIGO 20CM", unidad: "Paquetes (100 u.)", precio: 1.00, stock: 0 },
+        { nombre: "TRIGO 25CM", unidad: "Paquetes (100 u.)", precio: 1.70, stock: 0 },
+        { nombre: "TRIGO 30CM", unidad: "Paquetes (100 u.)", precio: 2.00, stock: 0 },
+        { nombre: "TRIGO 32CM", unidad: "Paquetes (100 u.)", precio: 2.30, stock: 0 },
+        { nombre: "MAIZ TACO", unidad: "Kilos", precio: 30.00, stock: 0 },
+        { nombre: "MAIZ CORTADO", unidad: "Kilos", precio: 30.00, stock: 0 },
+        { nombre: "NACHOS FRITOS", unidad: "Kilos", precio: 47.00, stock: 0 }
+    ];
 
-    productosBase.forEach(p => {
-        if (stock[p] === undefined) stock[p] = 0;
-    });
+    let productos = JSON.parse(localStorage.getItem('productos_tortillas')) || productosIniciales;
+    let editandoIndex = null;
 
-    function actualizarVista() {
-        let html = '';
-        for (let p in stock) {
-            html += `<tr><td><b>${p}</b></td><td>${stock[p]}</td></tr>`;
-        }
-        document.getElementById('tablaStock').innerHTML = html;
-        localStorage.setItem('stock_tortillas', JSON.stringify(stock));
+    function actualizarTodo() {
+        let selectHtml = '';
+        let tablaStockHtml = '';
+        let tablaGestionHtml = '';
+        let valorTotalGeneral = 0;
+
+        productos.forEach((p, index) => {
+            selectHtml += `<option value="${index}">${p.nombre} (${p.unidad})</option>`;
+
+            let valorStock = p.stock * p.precio;
+            valorTotalGeneral += valorStock;
+
+            tablaStockHtml += `
+                <tr>
+                    <td><b>${p.nombre}</b></td>
+                    <td>${p.unidad}</td>
+                    <td><b>${p.stock}</b></td>
+                    <td>$${p.precio.toFixed(2)}</td>
+                    <td><b>$${valorStock.toFixed(2)}</b></td>
+                </tr>
+            `;
+
+            tablaGestionHtml += `
+                <tr>
+                    <td>${p.nombre}</td>
+                    <td>${p.unidad}</td>
+                    <td>$${p.precio.toFixed(2)}</td>
+                    <td>
+                        <button class="btn-edit" onclick="cargarEdicion(${index})">✏️ Editar</button>
+                        <button class="btn-edit" style="background:#dc3545;" onclick="eliminarProducto(${index})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('productoSelect').innerHTML = selectHtml;
+        document.getElementById('tablaStock').innerHTML = tablaStockHtml;
+        document.getElementById('tablaGestion').innerHTML = tablaGestionHtml;
+        document.getElementById('valorTotalGeneral').innerText = `Valor Total Inventario: $${valorTotalGeneral.toFixed(2)}`;
+
+        localStorage.setItem('productos_tortillas', JSON.stringify(productos));
     }
 
     function registrar(tipo) {
-        let producto = document.getElementById('producto').value;
-        let cantidad = parseInt(document.getElementById('cantidad').value);
+        let index = document.getElementById('productoSelect').value;
+        let cantidad = parseFloat(document.getElementById('cantidad').value);
 
         if (isNaN(cantidad) || cantidad <= 0) {
             alert("Por favor ingresa una cantidad válida.");
@@ -93,20 +168,59 @@
         }
 
         if (tipo === 'entrada') {
-            stock[producto] += cantidad;
+            productos[index].stock += cantidad;
         } else {
-            if (stock[producto] < cantidad) {
+            if (productos[index].stock < cantidad) {
                 alert("¡Cuidado! No hay suficiente stock para esta salida.");
                 return;
             }
-            stock[producto] -= cantidad;
+            productos[index].stock -= cantidad;
         }
 
         document.getElementById('cantidad').value = '';
-        actualizarVista();
+        actualizarTodo();
     }
 
-    actualizarVista();
+    function guardarProducto() {
+        let nombre = document.getElementById('nuevoNombre').value.trim().toUpperCase();
+        let unidad = document.getElementById('nuevaUnidad').value;
+        let precio = parseFloat(document.getElementById('nuevoPrecio').value);
+
+        if (!nombre || isNaN(precio) || precio < 0) {
+            alert("Ingresa un nombre y un precio válido.");
+            return;
+        }
+
+        if (editandoIndex !== null) {
+            productos[editandoIndex].nombre = nombre;
+            productos[editandoIndex].unidad = unidad;
+            productos[editandoIndex].precio = precio;
+            editandoIndex = null;
+        } else {
+            productos.push({ nombre: nombre, unidad: unidad, precio: precio, stock: 0 });
+        }
+
+        document.getElementById('nuevoNombre').value = '';
+        document.getElementById('nuevoPrecio').value = '';
+        actualizarTodo();
+    }
+
+    function cargarEdicion(index) {
+        document.getElementById('nuevoNombre').value = productos[index].nombre;
+        document.getElementById('nuevaUnidad').value = productos[index].unidad;
+        document.getElementById('nuevoPrecio').value = productos[index].precio;
+        editandoIndex = index;
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function eliminarProducto(index) {
+        if (confirm(`¿Seguro que deseas eliminar ${productos[index].nombre}?`)) {
+            productos.splice(index, 1);
+            actualizarTodo();
+        }
+    }
+
+    actualizarTodo();
 </script>
 
 </body>
