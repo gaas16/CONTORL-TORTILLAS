@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión - Fábrica de Tortillas</title>
     
-    <!-- SDK Modular de Firebase con tus credenciales de STOCK DE FABRICA -->
+    <!-- SDK Modular de Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
@@ -46,9 +46,7 @@
             btn.classList.add('active');
         };
 
-        // SINCRONIZACIÓN EN TIEMPO REAL CON LA NUBE
         function iniciarSincronizacion() {
-            // Productos
             onSnapshot(collection(db, "tortillas_productos"), (snapshot) => {
                 if (snapshot.empty) {
                     productosPorDefecto.forEach(p => {
@@ -66,7 +64,6 @@
                 document.getElementById('syncStatus').innerText = "🔴 Error de conexión con la nube";
             });
 
-            // Clientes
             onSnapshot(collection(db, "tortillas_clientes"), (snapshot) => {
                 clientes = [];
                 snapshot.forEach(docSnap => {
@@ -75,7 +72,6 @@
                 renderizarTodo();
             });
 
-            // Ventas
             onSnapshot(collection(db, "tortillas_ventas"), (snapshot) => {
                 ventas = [];
                 snapshot.forEach(docSnap => {
@@ -238,12 +234,8 @@
                 fecha: new Date().toISOString()
             });
 
-            // LIMPIAR CAMPOS DE VENTA
+            // Resetear cantidad de venta
             document.getElementById('ventaCantidad').value = '';
-            document.getElementById('ventaClienteSelect.selectedIndex'] = 0;
-            document.getElementById('ventaProductoSelect.selectedIndex'] = 0;
-            window.actualizarPrecioVenta();
-
             alert("¡Venta registrada con éxito y stock actualizado en la nube!");
         };
 
@@ -261,9 +253,8 @@
 
             await updateDoc(doc(db, "tortillas_productos", p.id), { stock: nuevoStock });
             
-            // LIMPIAR CAMPO DE STOCK
+            // Resetear cantidad de producción
             document.getElementById('stockCantidad').value = '';
-
             alert("¡Producción registrada en la nube!");
         };
 
@@ -293,7 +284,7 @@
                 await setDoc(doc(db, "tortillas_productos", nuevoId), { nombre, unidad, precio, stock: 0 });
             }
 
-            // LIMPIAR CAMPOS DE PRODUCTO
+            // Resetear campos de producto
             document.getElementById('nuevoNombre').value = '';
             document.getElementById('nuevoPrecio').value = '';
         };
@@ -328,7 +319,7 @@
                 await setDoc(doc(db, "tortillas_clientes", nuevoId), { nombre, telefono, direccion });
             }
 
-            // LIMPIAR CAMPOS DE CLIENTE AUTOMÁTICAMENTE
+            // Resetear campos de cliente automáticamente
             document.getElementById('clienteNombre').value = '';
             document.getElementById('clienteTelefono').value = '';
             document.getElementById('clienteDireccion').value = '';
