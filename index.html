@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Tortillas - Fábrica</title>
+    <title>Control de Tortillas y Clientes - Fábrica</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -27,13 +27,13 @@
 <body>
 
 <div class="container">
-    <h1>Control de Stock, Producción y Valorizado - Fábrica</h1>
+    <h1>Control de Stock, Producción, Valorizado y Clientes</h1>
 
     <!-- FORMULARIO DE MOVIMIENTOS -->
     <div class="section">
         <h2>Registrar Entrada (Producción) o Salida (Venta/Despacho)</h2>
         <label>Producto:</label>
-        <select id="productoSelect"></select>
+        <select id="productoSelect" onchange="actualizarLabelCantidad()"></select>
 
         <label id="labelCantidad">Cantidad:</label>
         <input type="number" id="cantidad" placeholder="Ej. 10" min="0.1" step="any">
@@ -52,7 +52,8 @@
                 <tr>
                     <th>Producto</th>
                     <th>Unidad de Medida</th>
-                    <th>Stock Actual</th>
+                    <th>Stock Base / Kilos</th>
+                    <th>Equivalente Paquetes / Cajas</th>
                     <th>Precio Unitario</th>
                     <th>Valor Total Stock</th>
                 </tr>
@@ -62,19 +63,20 @@
         <div class="total-box" id="valorTotalGeneral">Valor Total Inventario: $0.00</div>
     </div>
 
-    <!-- GESTIÓN DE PRODUCTOS (CREAR / EDITAR PRECIOS) -->
+    <!-- GESTIÓN DE PRODUCTOS -->
     <div class="section">
         <h2>Gestionar Productos y Precios</h2>
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: end;">
+        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; gap: 10px; align-items: end;">
             <div>
                 <label>Nombre del Producto:</label>
                 <input type="text" id="nuevoNombre" placeholder="Ej. TRIGO 35CM">
             </div>
             <div>
-                <label>Unidad:</label>
+                <label>Tipo de Unidad:</label>
                 <select id="nuevaUnidad">
-                    <option value="Paquetes (100 u.)">Paquetes (100 u.)</option>
-                    <option value="Kilos">Kilos</option>
+                    <option value="Trigo (Paquetes 100 u.)">Trigo (Paquetes 100 u.)</option>
+                    <option value="Maíz Cortado (Paq. 6kg)">Maíz Cortado (Paq. 6kg)</option>
+                    <option value="Kilos (General)">Kilos (General)</option>
                 </select>
             </div>
             <div>
@@ -82,7 +84,7 @@
                 <input type="number" id="nuevoPrecio" placeholder="0.00" step="0.01">
             </div>
             <div>
-                <button onclick="guardarProducto()">💾 Guardar / Añadir</button>
+                <button onclick="guardarProducto()">💾 Guardar</button>
             </div>
         </div>
 
@@ -98,22 +100,58 @@
             <tbody id="tablaGestion"></tbody>
         </table>
     </div>
+
+    <!-- GESTIÓN DE CLIENTES -->
+    <div class="section">
+        <h2>Gestión de Clientes</h2>
+        <div style="display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 10px; align-items: end;">
+            <div>
+                <label>Nombre del Cliente / Local:</label>
+                <input type="text" id="clienteNombre" placeholder="Ej. Restaurante El Paisa">
+            </div>
+            <div>
+                <label>Teléfono:</label>
+                <input type="text" id="clienteTelefono" placeholder="Ej. 51234567">
+            </div>
+            <div>
+                <label>Dirección / Notas:</label>
+                <input type="text" id="clienteDireccion" placeholder="Ej. Centro, Calle Principal">
+            </div>
+            <div>
+                <button onclick="guardarCliente()">👤 Guardar Cliente</button>
+            </div>
+        </div>
+
+        <table style="margin-top: 15px;">
+            <thead>
+                <tr>
+                    <th>Cliente / Local</th>
+                    <th>Teléfono</th>
+                    <th>Dirección / Notas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaClientes"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
-    // Productos iniciales configurados con tus precios y unidades
     let productosIniciales = [
-        { nombre: "TRIGO 20CM", unidad: "Paquetes (100 u.)", precio: 1.00, stock: 0 },
-        { nombre: "TRIGO 25CM", unidad: "Paquetes (100 u.)", precio: 1.70, stock: 0 },
-        { nombre: "TRIGO 30CM", unidad: "Paquetes (100 u.)", precio: 2.00, stock: 0 },
-        { nombre: "TRIGO 32CM", unidad: "Paquetes (100 u.)", precio: 2.30, stock: 0 },
-        { nombre: "MAIZ TACO", unidad: "Kilos", precio: 30.00, stock: 0 },
-        { nombre: "MAIZ CORTADO", unidad: "Kilos", precio: 30.00, stock: 0 },
-        { nombre: "NACHOS FRITOS", unidad: "Kilos", precio: 47.00, stock: 0 }
+        { nombre: "TRIGO 20CM", unidad: "Trigo (Paquetes 100 u.)", precio: 1.00, stock: 0 },
+        { nombre: "TRIGO 25CM", unidad: "Trigo (Paquetes 100 u.)", precio: 1.70, stock: 0 },
+        { nombre: "TRIGO 30CM", unidad: "Trigo (Paquetes 100 u.)", precio: 2.00, stock: 0 },
+        { nombre: "TRIGO 32CM", unidad: "Trigo (Paquetes 100 u.)", precio: 2.30, stock: 0 },
+        { nombre: "MAIZ TACO", unidad: "Kilos (General)", precio: 30.00, stock: 0 },
+        { nombre: "MAIZ CORTADO", unidad: "Maíz Cortado (Paq. 6kg)", precio: 30.00, stock: 0 },
+        { nombre: "NACHOS CHICA MARIA", unidad: "Kilos (General)", precio: 47.00, stock: 0 }
     ];
 
     let productos = JSON.parse(localStorage.getItem('productos_tortillas')) || productosIniciales;
+    let clientes = JSON.parse(localStorage.getItem('clientes_tortillas')) || [];
+    
     let editandoIndex = null;
+    let editandoClienteIndex = null;
 
     function actualizarTodo() {
         let selectHtml = '';
@@ -127,11 +165,22 @@
             let valorStock = p.stock * p.precio;
             valorTotalGeneral += valorStock;
 
+            let colEquivalente = "-";
+            if (p.unidad.includes("Trigo")) {
+                colEquivalente = `${p.stock} Paquetes (100 u.)`;
+            } else if (p.unidad.includes("Maíz Cortado")) {
+                let paquetes6kg = (p.stock / 6).toFixed(1);
+                colEquivalente = `${paquetes6kg} Paq. de 6kg (${p.stock} kg total)`;
+            } else {
+                colEquivalente = `${p.stock} Kilos`;
+            }
+
             tablaStockHtml += `
                 <tr>
                     <td><b>${p.nombre}</b></td>
                     <td>${p.unidad}</td>
                     <td><b>${p.stock}</b></td>
+                    <td>${colEquivalente}</td>
                     <td>$${p.precio.toFixed(2)}</td>
                     <td><b>$${valorStock.toFixed(2)}</b></td>
                 </tr>
@@ -143,7 +192,7 @@
                     <td>${p.unidad}</td>
                     <td>$${p.precio.toFixed(2)}</td>
                     <td>
-                        <button class="btn-edit" onclick="cargarEdicion(${index})">✏️ Editar</button>
+                        <button class="btn-edit" onclick="cargarEdicionProducto(${index})">✏️ Editar</button>
                         <button class="btn-edit" style="background:#dc3545;" onclick="eliminarProducto(${index})">🗑️</button>
                     </td>
                 </tr>
@@ -155,7 +204,40 @@
         document.getElementById('tablaGestion').innerHTML = tablaGestionHtml;
         document.getElementById('valorTotalGeneral').innerText = `Valor Total Inventario: $${valorTotalGeneral.toFixed(2)}`;
 
+        // Renderizar Clientes
+        let tablaClientesHtml = '';
+        clientes.forEach((c, index) => {
+            tablaClientesHtml += `
+                <tr>
+                    <td><b>${c.nombre}</b></td>
+                    <td>${c.telefono || '-'}</td>
+                    <td>${c.direccion || '-'}</td>
+                    <td>
+                        <button class="btn-edit" onclick="cargarEdicionCliente(${index})">✏️ Editar</button>
+                        <button class="btn-edit" style="background:#dc3545;" onclick="eliminarCliente(${index})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+        document.getElementById('tablaClientes').innerHTML = tablaClientesHtml;
+
         localStorage.setItem('productos_tortillas', JSON.stringify(productos));
+        localStorage.setItem('clientes_tortillas', JSON.stringify(clientes));
+        actualizarLabelCantidad();
+    }
+
+    function actualizarLabelCantidad() {
+        let index = document.getElementById('productoSelect').value;
+        if(productos[index]) {
+            let p = productos[index];
+            if(p.unidad.includes("Trigo")) {
+                document.getElementById('labelCantidad').innerText = "Cantidad (en Paquetes de 100 u.):";
+            } else if(p.unidad.includes("Maíz Cortado")) {
+                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos totales o ingresa en kg):";
+            } else {
+                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos):";
+            }
+        }
     }
 
     function registrar(tipo) {
@@ -205,17 +287,57 @@
         actualizarTodo();
     }
 
-    function cargarEdicion(index) {
+    function cargarEdicionProducto(index) {
         document.getElementById('nuevoNombre').value = productos[index].nombre;
         document.getElementById('nuevaUnidad').value = productos[index].unidad;
         document.getElementById('nuevoPrecio').value = productos[index].precio;
         editandoIndex = index;
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function eliminarProducto(index) {
         if (confirm(`¿Seguro que deseas eliminar ${productos[index].nombre}?`)) {
             productos.splice(index, 1);
+            actualizarTodo();
+        }
+    }
+
+    function guardarCliente() {
+        let nombre = document.getElementById('clienteNombre').value.trim();
+        let telefono = document.getElementById('clienteTelefono').value.trim();
+        let direccion = document.getElementById('clienteDireccion').value.trim();
+
+        if (!nombre) {
+            alert("Por favor ingresa al menos el nombre del cliente.");
+            return;
+        }
+
+        if (editandoClienteIndex !== null) {
+            clientes[editandoClienteIndex].nombre = nombre;
+            clientes[editandoClienteIndex].telefono = telefono;
+            clientes[editandoClienteIndex].direccion = direccion;
+            editandoClienteIndex = null;
+        } else {
+            clientes.push({ nombre: nombre, telefono: telefono, direccion: direccion });
+        }
+
+        document.getElementById('clienteNombre').value = '';
+        document.getElementById('clienteTelefono').value = '';
+        document.getElementById('clienteDireccion').value = '';
+        actualizarTodo();
+    }
+
+    function cargarEdicionCliente(index) {
+        document.getElementById('clienteNombre').value = clientes[index].nombre;
+        document.getElementById('clienteTelefono').value = clientes[index].telefono;
+        document.getElementById('clienteDireccion').value = clientes[index].direccion;
+        editandoClienteIndex = index;
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function eliminarCliente(index) {
+        if (confirm(`¿Seguro que deseas eliminar al cliente ${clientes[index].nombre}?`)) {
+            clientes.splice(index, 1);
             actualizarTodo();
         }
     }
