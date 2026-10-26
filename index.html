@@ -234,7 +234,7 @@
                 fecha: new Date().toISOString()
             });
 
-            // Resetear cantidad de venta
+            // Reseteo limpio de la cantidad en ventas
             document.getElementById('ventaCantidad').value = '';
             alert("¡Venta registrada con éxito y stock actualizado en la nube!");
         };
@@ -253,7 +253,7 @@
 
             await updateDoc(doc(db, "tortillas_productos", p.id), { stock: nuevoStock });
             
-            // Resetear cantidad de producción
+            // Reseteo limpio del campo de producción
             document.getElementById('stockCantidad').value = '';
             alert("¡Producción registrada en la nube!");
         };
@@ -284,7 +284,7 @@
                 await setDoc(doc(db, "tortillas_productos", nuevoId), { nombre, unidad, precio, stock: 0 });
             }
 
-            // Resetear campos de producto
+            // Reseteo limpio de productos
             document.getElementById('nuevoNombre').value = '';
             document.getElementById('nuevoPrecio').value = '';
         };
@@ -319,10 +319,11 @@
                 await setDoc(doc(db, "tortillas_clientes", nuevoId), { nombre, telefono, direccion });
             }
 
-            // Resetear campos de cliente automáticamente
+            // Reseteo limpio de clientes
             document.getElementById('clienteNombre').value = '';
             document.getElementById('clienteTelefono').value = '';
             document.getElementById('clienteDireccion').value = '';
+            alert("¡Cliente guardado con éxito!");
         };
 
         window.cargarEdicionCliente = function(id) {
