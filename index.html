@@ -4,353 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión - Fábrica de Tortillas</title>
-    <!-- SDK Modular de Firebase -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCI-s09x6xqiJ3LNoralDmX9GuNtTuSK5k",
-            authDomain: "rutacash-44a4a.firebaseapp.com",
-            projectId: "rutacash-44a4a",
-            storageBucket: "rutacash-44a4a.firebasestorage.app",
-            messagingSenderId: "509573274669",
-            appId: "1:509573274669:web:3766c2e5e08962ebe8aca4",
-            measurementId: "G-KKX2RTKF1M"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Productos por defecto con sus precios listos
-        let productosPorDefecto = [
-            { id: "p1", nombre: "TRIGO 20CM", unidad: "Trigo", precio: 1.00, stock: 0 },
-            { id: "p2", nombre: "TRIGO 25CM", unidad: "Trigo", precio: 1.70, stock: 0 },
-            { id: "p3", nombre: "TRIGO 30CM", unidad: "Trigo", precio: 2.00, stock: 0 },
-            { id: "p4", nombre: "TRIGO 32CM", unidad: "Trigo", precio: 2.30, stock: 0 },
-            { id: "p5", nombre: "MAIZ TACO", unidad: "Kilos General", precio: 30.00, stock: 0 },
-            { id: "p6", nombre: "MAIZ CORTADO", unidad: "Maíz Cortado", precio: 30.00, stock: 0 },
-            { id: "p7", nombre: "NACHOS CHICA MARIA", unidad: "Kilos General", precio: 47.00, stock: 0 }
-        ];
-
-        let productos = [];
-        let clientes = [];
-        let ventas = [];
-        let editandoId = null;
-        let editandoClienteId = null;
-
-        window.cambiarSeccion = function(idSeccion, btn) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(idSeccion).classList.add('active');
-            btn.classList.add('active');
-        };
-
-        // SINCRONIZACIÓN EN TIEMPO REAL
-        function iniciarSincronizacion() {
-            // Productos
-            onSnapshot(collection(db, "tortillas_productos"), (snapshot) => {
-                if (snapshot.empty) {
-                    // Si está vacío en la nube, cargamos automáticamente los productos por defecto
-                    productosPorDefecto.forEach(p => {
-                        setDoc(doc(db, "tortillas_productos", p.id), p);
-                    });
-                } else {
-                    productos = [];
-                    snapshot.forEach(docSnap => {
-                        productos.push({ id: docSnap.id, ...docSnap.data() });
-                    });
-                    renderizarTodo();
-                }
-                document.getElementById('syncStatus').innerText = "🟢 Sincronizado con la nube";
-            }, (error) => {
-                document.getElementById('syncStatus').innerText = "🔴 Error de conexión con la nube";
-            });
-
-            // Clientes
-            onSnapshot(collection(db, "tortillas_clientes"), (snapshot) => {
-                clientes = [];
-                snapshot.forEach(docSnap => {
-                    clientes.push({ id: docSnap.id, ...docSnap.data() });
-                });
-                renderizarTodo();
-            });
-
-            // Ventas
-            onSnapshot(collection(db, "tortillas_ventas"), (snapshot) => {
-                ventas = [];
-                snapshot.forEach(docSnap => {
-                    ventas.push({ id: docSnap.id, ...docSnap.data() });
-                });
-                renderizarTodo();
-            });
-        }
-
-        function renderizarTodo() {
-            let resumenTrigoHtml = '';
-            let resumenMaizHtml = '';
-            let selectVentaProdHtml = '';
-            let selectStockProdHtml = '';
-            let tablaAjusteStockHtml = '';
-            let tablaGestionProdHtml = '';
-            let valorTotalGeneral = 0;
-            let totalVentasDinero = 0;
-
-            ventas.forEach(v => totalVentasDinero += (v.total || 0));
-
-            productos.forEach((p) => {
-                let valorStock = (p.stock || 0) * (p.precio || 0);
-                valorTotalGeneral += valorStock;
-
-                selectVentaProdHtml += `<option value="${p.id}">${p.nombre} ($${Number(p.precio).toFixed(2)})</option>`;
-                selectStockProdHtml += `<option value="${p.id}">${p.nombre} (${p.unidad})</option>`;
-
-                if (p.unidad === "Trigo") {
-                    let paqTrigo = ((p.stock || 0) / 100).toFixed(1);
-                    resumenTrigoHtml += `
-                        <tr>
-                            <td><b>${p.nombre}</b></td>
-                            <td><b>${p.stock || 0} un.</b></td>
-                            <td>${paqTrigo} paq. (100 u.)</td>
-                            <td>$${Number(p.precio).toFixed(2)}</td>
-                            <td><b>$${valorStock.toFixed(2)}</b></td>
-                        </tr>
-                    `;
-                } else {
-                    let conversion = p.unidad === "Maíz Cortado" ? `${((p.stock || 0) / 6).toFixed(1)} paq. de 6kg` : `${p.stock || 0} kg`;
-                    resumenMaizHtml += `
-                        <tr>
-                            <td><b>${p.nombre}</b></td>
-                            <td>${p.unidad}</td>
-                            <td><b>${p.stock || 0} kg</b></td>
-                            <td>${conversion}</td>
-                            <td>$${Number(p.precio).toFixed(2)}</td>
-                            <td><b>$${valorStock.toFixed(2)}</b></td>
-                        </tr>
-                    `;
-                }
-
-                tablaAjusteStockHtml += `
-                    <tr>
-                        <td><b>${p.nombre}</b></td>
-                        <td><b>${p.stock || 0}</b></td>
-                        <td><button class="btn-stock" onclick="window.corregirStock('${p.id}')">✏️ Ajustar</button></td>
-                    </tr>
-                `;
-
-                tablaGestionProdHtml += `
-                    <tr>
-                        <td>${p.nombre}</td>
-                        <td>${p.unidad}</td>
-                        <td>$${Number(p.precio).toFixed(2)}</td>
-                        <td>
-                            <button class="btn-edit" onclick="window.cargarEdicionProducto('${p.id}')">✏️ Editar</button>
-                            <button class="btn-edit" style="background:#dc3545;" onclick="window.eliminarProducto('${p.id}')">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            let selectClienteHtml = '';
-            let tablaClientesHtml = '';
-            clientes.forEach((c) => {
-                selectClienteHtml += `<option value="${c.nombre}">${c.nombre}</option>`;
-                tablaClientesHtml += `
-                    <tr>
-                        <td><b>${c.nombre}</b></td>
-                        <td>${c.telefono || '-'}</td>
-                        <td>${c.direccion || '-'}</td>
-                        <td>
-                            <button class="btn-edit" onclick="window.cargarEdicionCliente('${c.id}')">✏️ Editar</button>
-                            <button class="btn-edit" style="background:#dc3545;" onclick="window.eliminarCliente('${c.id}')">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            let tablaVentasHtml = '';
-            if (ventas.length === 0) {
-                tablaVentasHtml = `<tr><td colspan="4">No hay ventas registradas aún.</td></tr>`;
-            } else {
-                ventas.forEach(v => {
-                    tablaVentasHtml += `
-                        <tr>
-                            <td><b>${v.cliente}</b></td>
-                            <td>${v.producto}</td>
-                            <td>${v.cantidad}</td>
-                            <td><b>$${Number(v.total).toFixed(2)}</b></td>
-                        </tr>
-                    `;
-                });
-            }
-
-            document.getElementById('resumenTrigo').innerHTML = resumenTrigoHtml || `<tr><td colspan="5">Sin productos de trigo.</td></tr>`;
-            document.getElementById('resumenMaiz').innerHTML = resumenMaizHtml || `<tr><td colspan="6">Sin productos de maíz.</td></tr>`;
-            document.getElementById('ventaProductoSelect').innerHTML = selectVentaProdHtml;
-            document.getElementById('ventaClienteSelect').innerHTML = selectClienteHtml || `<option value="General">Público General</option>`;
-            document.getElementById('stockProductoSelect').innerHTML = selectStockProdHtml;
-            document.getElementById('tablaAjusteStock').innerHTML = tablaAjusteStockHtml;
-            document.getElementById('tablaGestionProductos').innerHTML = tablaGestionProdHtml;
-            document.getElementById('tablaClientes').innerHTML = tablaClientesHtml;
-            document.getElementById('tablaHistorialVentas').innerHTML = tablaVentasHtml;
-
-            document.getElementById('kpiValorTotal').innerText = `$${valorTotalGeneral.toFixed(2)}`;
-            document.getElementById('kpiTotalClientes').innerText = clientes.length;
-            document.getElementById('kpiTotalVentas').innerText = `$${totalVentasDinero.toFixed(2)}`;
-
-            window.actualizarPrecioVenta();
-        }
-
-        window.actualizarPrecioVenta = function() {
-            let prodId = document.getElementById('ventaProductoSelect').value;
-            let p = productos.find(x => x.id === prodId);
-            if(p) {
-                document.getElementById('ventaPrecio').value = p.precio;
-                document.getElementById('ventaLabelCantidad').innerText = p.unidad === "Trigo" ? "Cantidad (Unidades):" : "Cantidad (Kilos):";
-            }
-        };
-
-        window.procesarVenta = async function() {
-            let clienteNombre = document.getElementById('ventaClienteSelect').value;
-            let prodId = document.getElementById('ventaProductoSelect').value;
-            let cantidad = parseFloat(document.getElementById('ventaCantidad').value);
-            let precio = parseFloat(document.getElementById('ventaPrecio').value);
-
-            if (isNaN(cantidad) || cantidad <= 0 || isNaN(precio)) {
-                alert("Por favor ingresa una cantidad y precio válidos.");
-                return;
-            }
-
-            let p = productos.find(x => x.id === prodId);
-            if (p.stock < cantidad) {
-                alert(`¡Stock insuficiente! Solo tienes ${p.stock} disponible.`);
-                return;
-            }
-
-            let nuevoStock = p.stock - cantidad;
-            let totalVenta = cantidad * precio;
-
-            await updateDoc(doc(db, "tortillas_productos", p.id), { stock: nuevoStock });
-            await addDoc(collection(db, "tortillas_ventas"), {
-                cliente: clienteNombre,
-                producto: p.nombre,
-                cantidad: cantidad,
-                total: totalVenta,
-                fecha: new Date().toISOString()
-            });
-
-            document.getElementById('ventaCantidad').value = '';
-            alert("¡Venta registrada con éxito y stock actualizado en la nube!");
-        };
-
-        window.registrarProduccion = async function() {
-            let prodId = document.getElementById('stockProductoSelect').value;
-            let cantidad = parseFloat(document.getElementById('stockCantidad').value);
-
-            if (isNaN(cantidad) || cantidad <= 0) {
-                alert("Ingresa una cantidad válida.");
-                return;
-            }
-
-            let p = productos.find(x => x.id === prodId);
-            let nuevoStock = (p.stock || 0) + cantidad;
-
-            await updateDoc(doc(db, "tortillas_productos", p.id), { stock: nuevoStock });
-            document.getElementById('stockCantidad').value = '';
-            alert("¡Producción registrada en la nube!");
-        };
-
-        window.corregirStock = async function(id) {
-            let p = productos.find(x => x.id === id);
-            let nuevo = prompt(`Ajustar stock para ${p.nombre}:`, p.stock);
-            if (nuevo !== null && !isNaN(parseFloat(nuevo))) {
-                await updateDoc(doc(db, "tortillas_productos", id), { stock: parseFloat(nuevo) });
-            }
-        };
-
-        window.guardarProducto = async function() {
-            let nombre = document.getElementById('nuevoNombre').value.trim().toUpperCase();
-            let unidad = document.getElementById('nuevaUnidad').value;
-            let precio = parseFloat(document.getElementById('nuevoPrecio').value);
-
-            if (!nombre || isNaN(precio)) {
-                alert("Completa los datos del producto.");
-                return;
-            }
-
-            if (editandoId !== null) {
-                await updateDoc(doc(db, "tortillas_productos", editandoId), { nombre, unidad, precio });
-                editandoId = null;
-            } else {
-                let nuevoId = "p_" + Date.now();
-                await setDoc(doc(db, "tortillas_productos", nuevoId), { nombre, unidad, precio, stock: 0 });
-            }
-
-            document.getElementById('nuevoNombre').value = '';
-            document.getElementById('nuevoPrecio').value = '';
-        };
-
-        window.cargarEdicionProducto = function(id) {
-            let p = productos.find(x => x.id === id);
-            document.getElementById('nuevoNombre').value = p.nombre;
-            document.getElementById('nuevaUnidad').value = p.unidad;
-            document.getElementById('nuevoPrecio').value = p.precio;
-            editandoId = id;
-            window.cambiarSeccion('seccionProductos', document.querySelectorAll('.menu-btn')[3]);
-        };
-
-        window.eliminarProducto = async function(id) {
-            if (confirm("¿Deseas eliminar este producto?")) {
-                await deleteDoc(doc(db, "tortillas_productos", id));
-            }
-        };
-
-        window.guardarCliente = async function() {
-            let nombre = document.getElementById('clienteNombre').value.trim();
-            let telefono = document.getElementById('clienteTelefono').value.trim();
-            let direccion = document.getElementById('clienteDireccion').value.trim();
-
-            if (!nombre) { alert("Ingresa el nombre del cliente."); return; }
-
-            if (editandoClienteId !== null) {
-                await updateDoc(doc(db, "tortillas_clientes", editandoClienteId), { nombre, telefono, direccion });
-                editandoClienteId = null;
-            } else {
-                let nuevoId = "c_" + Date.now();
-                await setDoc(doc(db, "tortillas_clientes", nuevoId), { nombre, telefono, direccion });
-            }
-
-            document.getElementById('clienteNombre').value = '';
-            document.getElementById('clienteTelefono').value = '';
-            document.getElementById('clienteDireccion').value = '';
-        };
-
-        window.cargarEdicionCliente = function(id) {
-            let c = clientes.find(x => x.id === id);
-            document.getElementById('clienteNombre').value = c.nombre;
-            document.getElementById('clienteTelefono').value = c.telefono;
-            document.getElementById('clienteDireccion').value = c.direccion;
-            editandoClienteId = id;
-            window.cambiarSeccion('seccionClientes', document.querySelectorAll('.menu-btn')[4]);
-        };
-
-        window.eliminarCliente = async function(id) {
-            if (confirm("¿Eliminar cliente?")) {
-                await deleteDoc(doc(db, "tortillas_clientes", id));
-            }
-        };
-
-        iniciarSincronizacion();
-    </script>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; font-size: 24px; margin-bottom: 20px; }
+        
+        /* MENÚ DE NAVEGACIÓN */
         .menu-nav { display: flex; flex-wrap: wrap; gap: 5px; background: #2c3e50; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
         .menu-btn { background: #34495e; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; flex: 1; text-align: center; }
         .menu-btn:hover, .menu-btn.active { background: #28a745; font-weight: bold; }
+
         .section { display: none; margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
         .section.active { display: block; }
+        
         h2 { font-size: 18px; margin-top: 0; color: #495057; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         select, input { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
@@ -370,15 +36,14 @@
         .kpi-card { background: white; padding: 15px; border-radius: 6px; border-left: 5px solid #28a745; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
         .kpi-card h3 { margin: 0; font-size: 14px; color: #6c757d; }
         .kpi-card p { margin: 10px 0 0; font-size: 20px; font-weight: bold; color: #2c3e50; }
-        .sync-status { text-align: right; font-size: 12px; color: #6c757d; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>Control de Fábrica - Tortillas y Ventas</h1>
-    <div class="sync-status" id="syncStatus">🔄 Conectando con la nube...</div>
 
+    <!-- MENÚ DESPLEGABLE / PESTAÑAS -->
     <div class="menu-nav">
         <button class="menu-btn active" onclick="cambiarSeccion('seccionResumen', this)">📊 Resumen General</button>
         <button class="menu-btn" onclick="cambiarSeccion('seccionVentas', this)">🛒 Registrar Venta / Salida</button>
@@ -468,7 +133,7 @@
         </table>
     </div>
 
-    <!-- 3. REGISTRAR STOCK -->
+    <!-- 3. REGISTRAR STOCK (PRODUCCIÓN) -->
     <div id="seccionStock" class="section">
         <h2>Control de Bodega - Entradas y Correcciones</h2>
         <label>Producto:</label>
@@ -565,6 +230,294 @@
     </div>
 
 </div>
+
+<script>
+    let productosIniciales = [
+        { nombre: "TRIGO 20CM", unidad: "Trigo", precio: 1.00, stock: 0 },
+        { nombre: "TRIGO 25CM", unidad: "Trigo", precio: 1.70, stock: 0 },
+        { nombre: "TRIGO 30CM", unidad: "Trigo", precio: 2.00, stock: 0 },
+        { nombre: "TRIGO 32CM", unidad: "Trigo", precio: 2.30, stock: 0 },
+        { nombre: "MAIZ TACO", unidad: "Kilos General", precio: 30.00, stock: 0 },
+        { nombre: "MAIZ CORTADO", unidad: "Maíz Cortado", precio: 30.00, stock: 0 },
+        { nombre: "NACHOS CHICA MARIA", unidad: "Kilos General", precio: 47.00, stock: 0 }
+    ];
+
+    let productos = JSON.parse(localStorage.getItem('productos_menu_v1')) || productosIniciales;
+    let clientes = JSON.parse(localStorage.getItem('clientes_menu_v1')) || [];
+    let ventas = JSON.parse(localStorage.getItem('ventas_menu_v1')) || [];
+    
+    let editandoIndex = null;
+    let editandoClienteIndex = null;
+
+    function cambiarSeccion(idSeccion, btn) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(idSeccion).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function actualizarTodo() {
+        let resumenTrigoHtml = '';
+        let resumenMaizHtml = '';
+        let selectVentaProdHtml = '';
+        let selectStockProdHtml = '';
+        let tablaAjusteStockHtml = '';
+        let tablaGestionProdHtml = '';
+        let valorTotalGeneral = 0;
+        let totalVentasDinero = 0;
+
+        ventas.forEach(v => totalVentasDinero += v.total);
+
+        productos.forEach((p, index) => {
+            let valorStock = p.stock * p.precio;
+            valorTotalGeneral += valorStock;
+
+            selectVentaProdHtml += `<option value="${index}">${p.nombre} ($${p.precio.toFixed(2)})</option>`;
+            selectStockProdHtml += `<option value="${index}">${p.nombre} (${p.unidad})</option>`;
+
+            if (p.unidad === "Trigo") {
+                let paqTrigo = (p.stock / 100).toFixed(1);
+                resumenTrigoHtml += `
+                    <tr>
+                        <td><b>${p.nombre}</b></td>
+                        <td><b>${p.stock} un.</b></td>
+                        <td>${paqTrigo} paq. (100 u.)</td>
+                        <td>$${p.precio.toFixed(2)}</td>
+                        <td><b>$${valorStock.toFixed(2)}</b></td>
+                    </tr>
+                `;
+            } else {
+                let conversion = p.unidad === "Maíz Cortado" ? `${(p.stock / 6).toFixed(1)} paq. de 6kg` : `${p.stock} kg`;
+                resumenMaizHtml += `
+                    <tr>
+                        <td><b>${p.nombre}</b></td>
+                        <td>${p.unidad}</td>
+                        <td><b>${p.stock} kg</b></td>
+                        <td>${conversion}</td>
+                        <td>$${p.precio.toFixed(2)}</td>
+                        <td><b>$${valorStock.toFixed(2)}</b></td>
+                    </tr>
+                `;
+            }
+
+            tablaAjusteStockHtml += `
+                <tr>
+                    <td><b>${p.nombre}</b></td>
+                    <td><b>${p.stock}</b></td>
+                    <td><button class="btn-stock" onclick="corregirStock(${index})">✏️ Ajustar</button></td>
+                </tr>
+            `;
+
+            tablaGestionProdHtml += `
+                <tr>
+                    <td>${p.nombre}</td>
+                    <td>${p.unidad}</td>
+                    <td>$${p.precio.toFixed(2)}</td>
+                    <td>
+                        <button class="btn-edit" onclick="cargarEdicionProducto(${index})">✏️ Editar</button>
+                        <button class="btn-edit" style="background:#dc3545;" onclick="eliminarProducto(${index})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        // Clientes
+        let selectClienteHtml = '';
+        let tablaClientesHtml = '';
+        clientes.forEach((c, index) => {
+            selectClienteHtml += `<option value="${c.nombre}">${c.nombre}</option>`;
+            tablaClientesHtml += `
+                <tr>
+                    <td><b>${c.nombre}</b></td>
+                    <td>${c.telefono || '-'}</td>
+                    <td>${c.direccion || '-'}</td>
+                    <td>
+                        <button class="btn-edit" onclick="cargarEdicionCliente(${index})">✏️ Editar</button>
+                        <button class="btn-edit" style="background:#dc3545;" onclick="eliminarCliente(${index})">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        // Historial Ventas
+        let tablaVentasHtml = '';
+        if (ventas.length === 0) {
+            tablaVentasHtml = `<tr><td colspan="4">No hay ventas registradas aún.</td></tr>`;
+        } else {
+            ventas.slice().reverse().forEach(v => {
+                tablaVentasHtml += `
+                    <tr>
+                        <td><b>${v.cliente}</b></td>
+                        <td>${v.producto}</td>
+                        <td>${v.cantidad}</td>
+                        <td><b>$${v.total.toFixed(2)}</b></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Renderizar en pantalla
+        document.getElementById('resumenTrigo').innerHTML = resumenTrigoHtml || `<tr><td colspan="5">Sin productos de trigo.</td></tr>`;
+        document.getElementById('resumenMaiz').innerHTML = resumenMaizHtml || `<tr><td colspan="6">Sin productos de maíz.</td></tr>`;
+        document.getElementById('ventaProductoSelect').innerHTML = selectVentaProdHtml;
+        document.getElementById('ventaClienteSelect').innerHTML = selectClienteHtml || `<option value="General">Público General</option>`;
+        document.getElementById('stockProductoSelect').innerHTML = selectStockProdHtml;
+        document.getElementById('tablaAjusteStock').innerHTML = tablaAjusteStockHtml;
+        document.getElementById('tablaGestionProductos').innerHTML = tablaGestionProdHtml;
+        document.getElementById('tablaClientes').innerHTML = tablaClientesHtml;
+        document.getElementById('tablaHistorialVentas').innerHTML = tablaVentasHtml;
+
+        // KPIs
+        document.getElementById('kpiValorTotal').innerText = `$${valorTotalGeneral.toFixed(2)}`;
+        document.getElementById('kpiTotalClientes').innerText = clientes.length;
+        document.getElementById('kpiTotalVentas').innerText = `$${totalVentasDinero.toFixed(2)}`;
+
+        // Guardar en memoria local
+        localStorage.setItem('productos_menu_v1', JSON.stringify(productos));
+        localStorage.setItem('clientes_menu_v1', JSON.stringify(clientes));
+        localStorage.setItem('ventas_menu_v1', JSON.stringify(ventas));
+        actualizarPrecioVenta();
+    }
+
+    function actualizarPrecioVenta() {
+        let index = document.getElementById('ventaProductoSelect').value;
+        if(productos[index]) {
+            document.getElementById('ventaPrecio').value = productos[index].precio;
+            let p = productos[index];
+            document.getElementById('ventaLabelCantidad').innerText = p.unidad === "Trigo" ? "Cantidad (Unidades):" : "Cantidad (Kilos):";
+        }
+    }
+
+    function procesarVenta() {
+        let clienteIdx = document.getElementById('ventaClienteSelect').value;
+        let productoIdx = document.getElementById('ventaProductoSelect').value;
+        let cantidad = parseFloat(document.getElementById('ventaCantidad').value);
+        let precio = parseFloat(document.getElementById('ventaPrecio').value);
+
+        if (isNaN(cantidad) || cantidad <= 0 || isNaN(precio)) {
+            alert("Por favor ingresa una cantidad y precio válidos.");
+            return;
+        }
+
+        let p = productos[productoIdx];
+        if (p.stock < cantidad) {
+            alert(`¡Stock insuficiente! Solo tienes ${p.stock} disponible.`);
+            return;
+        }
+
+        p.stock -= cantidad;
+        let totalVenta = cantidad * precio;
+
+        ventas.push({
+            cliente: clienteIdx,
+            producto: p.nombre,
+            cantidad: cantidad,
+            total: totalVenta
+        });
+
+        document.getElementById('ventaCantidad').value = '';
+        alert("¡Venta registrada con éxito y stock descontado!");
+        actualizarTodo();
+    }
+
+    function registrarProduccion() {
+        let index = document.getElementById('stockProductoSelect').value;
+        let cantidad = parseFloat(document.getElementById('stockCantidad').value);
+
+        if (isNaN(cantidad) || cantidad <= 0) {
+            alert("Ingresa una cantidad válida.");
+            return;
+        }
+
+        productos[index].stock += cantidad;
+        document.getElementById('stockCantidad').value = '';
+        alert("¡Producción registrada con éxito!");
+        actualizarTodo();
+    }
+
+    function corregirStock(index) {
+        let p = productos[index];
+        let nuevo = prompt(`Ajustar stock para ${p.nombre}:`, p.stock);
+        if (nuevo !== null && !isNaN(parseFloat(nuevo))) {
+            p.stock = parseFloat(nuevo);
+            actualizarTodo();
+        }
+    }
+
+    function guardarProducto() {
+        let nombre = document.getElementById('nuevoNombre').value.trim().toUpperCase();
+        let unidad = document.getElementById('nuevaUnidad').value;
+        let precio = parseFloat(document.getElementById('nuevoPrecio').value);
+
+        if (!nombre || isNaN(precio)) {
+            alert("Completa los datos del producto.");
+            return;
+        }
+
+        if (editandoIndex !== null) {
+            productos[editandoIndex] = { nombre, unidad, precio, stock: productos[editandoIndex].stock };
+            editandoIndex = null;
+        } else {
+            productos.push({ nombre, unidad, precio, stock: 0 });
+        }
+
+        document.getElementById('nuevoNombre').value = '';
+        document.getElementById('nuevoPrecio').value = '';
+        actualizarTodo();
+    }
+
+    function cargarEdicionProducto(index) {
+        document.getElementById('nuevoNombre').value = productos[index].nombre;
+        document.getElementById('nuevaUnidad').value = productos[index].unidad;
+        document.getElementById('nuevoPrecio').value = productos[index].precio;
+        editandoIndex = index;
+        cambiarSeccion('seccionProductos', document.querySelectorAll('.menu-btn')[3]);
+    }
+
+    function eliminarProducto(index) {
+        if (confirm("¿Deseas eliminar este producto?")) {
+            productos.splice(index, 1);
+            actualizarTodo();
+        }
+    }
+
+    function guardarCliente() {
+        let nombre = document.getElementById('clienteNombre').value.trim();
+        let telefono = document.getElementById('clienteTelefono').value.trim();
+        let direccion = document.getElementById('clienteDireccion').value.trim();
+
+        if (!nombre) { alert("Ingresa el nombre del cliente."); return; }
+
+        if (editandoClienteIndex !== null) {
+            clientes[editandoClienteIndex] = { nombre, telefono, direccion };
+            editandoClienteIndex = null;
+        } else {
+            clientes.push({ nombre, telefono, direccion });
+        }
+
+        document.getElementById('clienteNombre').value = '';
+        document.getElementById('clienteTelefono').value = '';
+        document.getElementById('clienteDireccion').value = '';
+        actualizarTodo();
+    }
+
+    function cargarEdicionCliente(index) {
+        document.getElementById('clienteNombre').value = clientes[index].nombre;
+        document.getElementById('clienteTelefono').value = clientes[index].telefono;
+        document.getElementById('clienteDireccion').value = clientes[index].direccion;
+        editandoClienteIndex = index;
+        cambiarSeccion('seccionClientes', document.querySelectorAll('.menu-btn')[4]);
+    }
+
+    function eliminarCliente(index) {
+        if (confirm("¿Eliminar cliente?")) {
+            clientes.splice(index, 1);
+            actualizarTodo();
+        }
+    }
+
+    actualizarTodo();
+</script>
 
 </body>
 </html>
