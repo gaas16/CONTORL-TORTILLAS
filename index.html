@@ -52,8 +52,8 @@
                 <tr>
                     <th>Producto</th>
                     <th>Unidad de Medida</th>
-                    <th>Stock Base / Kilos</th>
-                    <th>Equivalente Paquetes / Cajas</th>
+                    <th>Stock Base</th>
+                    <th>Paquetes</th>
                     <th>Precio Unitario</th>
                     <th>Valor Total Stock</th>
                 </tr>
@@ -165,14 +165,15 @@
             let valorStock = p.stock * p.precio;
             valorTotalGeneral += valorStock;
 
-            let colEquivalente = "-";
+            let colPaquetes = "-";
             if (p.unidad.includes("Trigo")) {
-                colEquivalente = `${p.stock} Paquetes (100 u.)`;
+                let paqTrigo = (p.stock / 100).toFixed(1);
+                colPaquetes = `${paqTrigo} paq. (${p.stock} un.)`;
             } else if (p.unidad.includes("Maíz Cortado")) {
-                let paquetes6kg = (p.stock / 6).toFixed(1);
-                colEquivalente = `${paquetes6kg} Paq. de 6kg (${p.stock} kg total)`;
+                let paqMaiz = (p.stock / 6).toFixed(1);
+                colPaquetes = `${paqMaiz} paq. de 6kg`;
             } else {
-                colEquivalente = `${p.stock} Kilos`;
+                colPaquetes = `${p.stock} kg`;
             }
 
             tablaStockHtml += `
@@ -180,7 +181,7 @@
                     <td><b>${p.nombre}</b></td>
                     <td>${p.unidad}</td>
                     <td><b>${p.stock}</b></td>
-                    <td>${colEquivalente}</td>
+                    <td>${colPaquetes}</td>
                     <td>$${p.precio.toFixed(2)}</td>
                     <td><b>$${valorStock.toFixed(2)}</b></td>
                 </tr>
@@ -204,7 +205,6 @@
         document.getElementById('tablaGestion').innerHTML = tablaGestionHtml;
         document.getElementById('valorTotalGeneral').innerText = `Valor Total Inventario: $${valorTotalGeneral.toFixed(2)}`;
 
-        // Renderizar Clientes
         let tablaClientesHtml = '';
         clientes.forEach((c, index) => {
             tablaClientesHtml += `
@@ -231,9 +231,9 @@
         if(productos[index]) {
             let p = productos[index];
             if(p.unidad.includes("Trigo")) {
-                document.getElementById('labelCantidad').innerText = "Cantidad (en Paquetes de 100 u.):";
+                document.getElementById('labelCantidad').innerText = "Cantidad (en Unidades sueltas de trigo):";
             } else if(p.unidad.includes("Maíz Cortado")) {
-                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos totales o ingresa en kg):";
+                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos totales):";
             } else {
                 document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos):";
             }
