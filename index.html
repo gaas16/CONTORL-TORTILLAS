@@ -8,7 +8,7 @@
     <!-- SDK Modular de Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCB_q11ZIG_7Mp_KCdMmj1wZQ7ri6e4knA",
@@ -46,24 +46,32 @@
             btn.classList.add('active');
         };
 
-        function iniciarSincronizacion() {
-            onSnapshot(collection(db, "tortillas_productos"), (snapshot) => {
-                if (snapshot.empty) {
-                    productosPorDefecto.forEach(p => {
-                        setDoc(doc(db, "tortillas_productos", p.id), p);
-                    });
-                } else {
-                    productos = [];
-                    snapshot.forEach(docSnap => {
-                        productos.push({ id: docSnap.id, ...docSnap.data() });
-                    });
-                    renderizarTodo();
+        async function iniciarSincronizacion() {
+            try {
+                // Verificar si la colección de productos está vacía de forma segura una sola vez
+                const snapshotCheck = await getDocs(collection(db, "tortillas_productos"));
+                if (snapshotCheck.empty) {
+                    for (let p of productosPorDefecto) {
+                        await setDoc(doc(db, "tortillas_productos", p.id), p);
+                    }
                 }
+            } catch (e) {
+                console.error("Error al inicializar productos:", e);
+            }
+
+            // Escuchar cambios en tiempo real (Productos)
+            onSnapshot(collection(db, "tortillas_productos"), (snapshot) => {
+                productos = [];
+                snapshot.forEach(docSnap => {
+                    productos.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderizarTodo();
                 document.getElementById('syncStatus').innerText = "🟢 Sincronizado con la nube";
             }, (error) => {
                 document.getElementById('syncStatus').innerText = "🔴 Error de conexión con la nube";
             });
 
+            // Escuchar cambios en tiempo real (Clientes)
             onSnapshot(collection(db, "tortillas_clientes"), (snapshot) => {
                 clientes = [];
                 snapshot.forEach(docSnap => {
@@ -72,6 +80,7 @@
                 renderizarTodo();
             });
 
+            // Escuchar cambios en tiempo real (Ventas)
             onSnapshot(collection(db, "tortillas_ventas"), (snapshot) => {
                 ventas = [];
                 snapshot.forEach(docSnap => {
@@ -234,7 +243,6 @@
                 fecha: new Date().toISOString()
             });
 
-            // Reseteo limpio de la cantidad en ventas
             document.getElementById('ventaCantidad').value = '';
             alert("¡Venta registrada con éxito y stock actualizado en la nube!");
         };
@@ -252,8 +260,6 @@
             let nuevoStock = (p.stock || 0) + cantidad;
 
             await updateDoc(doc(db, "tortillas_productos", p.id), { stock: nuevoStock });
-            
-            // Reseteo limpio del campo de producción
             document.getElementById('stockCantidad').value = '';
             alert("¡Producción registrada en la nube!");
         };
@@ -284,7 +290,6 @@
                 await setDoc(doc(db, "tortillas_productos", nuevoId), { nombre, unidad, precio, stock: 0 });
             }
 
-            // Reseteo limpio de productos
             document.getElementById('nuevoNombre').value = '';
             document.getElementById('nuevoPrecio').value = '';
         };
@@ -319,7 +324,6 @@
                 await setDoc(doc(db, "tortillas_clientes", nuevoId), { nombre, telefono, direccion });
             }
 
-            // Reseteo limpio de clientes
             document.getElementById('clienteNombre').value = '';
             document.getElementById('clienteTelefono').value = '';
             document.getElementById('clienteDireccion').value = '';
