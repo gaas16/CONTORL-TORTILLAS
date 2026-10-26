@@ -22,7 +22,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let productosIniciales = [
+        // Productos por defecto con sus precios listos
+        let productosPorDefecto = [
             { id: "p1", nombre: "TRIGO 20CM", unidad: "Trigo", precio: 1.00, stock: 0 },
             { id: "p2", nombre: "TRIGO 25CM", unidad: "Trigo", precio: 1.70, stock: 0 },
             { id: "p3", nombre: "TRIGO 30CM", unidad: "Trigo", precio: 2.00, stock: 0 },
@@ -50,7 +51,8 @@
             // Productos
             onSnapshot(collection(db, "tortillas_productos"), (snapshot) => {
                 if (snapshot.empty) {
-                    productosIniciales.forEach(p => {
+                    // Si está vacío en la nube, cargamos automáticamente los productos por defecto
+                    productosPorDefecto.forEach(p => {
                         setDoc(doc(db, "tortillas_productos", p.id), p);
                     });
                 } else {
