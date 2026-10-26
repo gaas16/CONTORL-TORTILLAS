@@ -21,6 +21,8 @@
         .out:hover { background: #c82333; }
         .btn-edit { background: #007bff; padding: 5px 10px; font-size: 12px; width: auto; }
         .btn-edit:hover { background: #0056b3; }
+        .btn-stock { background: #ffc107; color: #000; padding: 5px 10px; font-size: 12px; width: auto; font-weight: bold; }
+        .btn-stock:hover { background: #e0a800; }
         .total-box { font-size: 18px; font-weight: bold; text-align: right; margin-top: 15px; color: #2c3e50; }
     </style>
 </head>
@@ -44,7 +46,7 @@
         </div>
     </div>
 
-    <!-- TABLA 1: TORTILLAS DE TRIGO (UNIDADES Y PAQUETES DE 100) -->
+    <!-- TABLA 1: TORTILLAS DE TRIGO -->
     <div class="section">
         <h2>Inventario - Tortillas de Trigo (Unidades / Paquetes de 100 u.)</h2>
         <table>
@@ -55,13 +57,14 @@
                     <th>Paquetes (de 100 u.)</th>
                     <th>Precio Unitario</th>
                     <th>Valor Total Stock</th>
+                    <th>Acción / Corregir</th>
                 </tr>
             </thead>
             <tbody id="tablaTrigo"></tbody>
         </table>
     </div>
 
-    <!-- TABLA 2: MAÍZ Y NACHOS (KILOS Y PAQUETES DE 6KG) -->
+    <!-- TABLA 2: MAÍZ Y NACHOS -->
     <div class="section">
         <h2>Inventario - Maíz y Nachos (Kilos / Paquetes)</h2>
         <table>
@@ -73,6 +76,7 @@
                     <th>Paquetes / Conversión</th>
                     <th>Precio Unitario</th>
                     <th>Valor Total Stock</th>
+                    <th>Acción / Corregir</th>
                 </tr>
             </thead>
             <tbody id="tablaMaiz"></tbody>
@@ -192,6 +196,7 @@
                         <td>${paquetesTrigo} paq. (100 u.)</td>
                         <td>$${p.precio.toFixed(2)}</td>
                         <td><b>$${valorStock.toFixed(2)}</b></td>
+                        <td><button class="btn-stock" onclick="corregirStock(${index})">✏️ Ajustar Stock</button></td>
                     </tr>
                 `;
             } else {
@@ -211,6 +216,7 @@
                         <td>${conversion}</td>
                         <td>$${p.precio.toFixed(2)}</td>
                         <td><b>$${valorStock.toFixed(2)}</b></td>
+                        <td><button class="btn-stock" onclick="corregirStock(${index})">✏️ Ajustar Stock</button></td>
                     </tr>
                 `;
             }
@@ -229,8 +235,8 @@
         });
 
         document.getElementById('productoSelect').innerHTML = selectHtml;
-        document.getElementById('tablaTrigo').innerHTML = tablaTrigoHtml || `<tr><td colspan="5">No hay productos de trigo registrados.</td></tr>`;
-        document.getElementById('tablaMaiz').innerHTML = tablaMaizHtml || `<tr><td colspan="6">No hay productos de maíz registrados.</td></tr>`;
+        document.getElementById('tablaTrigo').innerHTML = tablaTrigoHtml || `<tr><td colspan="6">No hay productos de trigo registrados.</td></tr>`;
+        document.getElementById('tablaMaiz').innerHTML = tablaMaizHtml || `<tr><td colspan="7">No hay productos de maíz registrados.</td></tr>`;
         document.getElementById('tablaGestion').innerHTML = tablaGestionHtml;
         document.getElementById('valorTotalGeneral').innerText = `Valor Total Inventario: $${valorTotalGeneral.toFixed(2)}`;
 
@@ -253,6 +259,21 @@
         localStorage.setItem('productos_tortillas_sep', JSON.stringify(productos));
         localStorage.setItem('clientes_tortillas_sep', JSON.stringify(clientes));
         actualizarLabelCantidad();
+    }
+
+    function corregirStock(index) {
+        let p = productos[index];
+        let nuevoValor = prompt(`Ajustar stock actual para ${p.nombre}:\nIngresa la cantidad real exacta en ${p.unidad === 'Trigo' ? 'Unidades' : 'Kilos'}:`, p.stock);
+        
+        if (nuevoValor !== null) {
+            let cantidadParsed = parseFloat(nuevoValor);
+            if (!isNaN(cantidadParsed) && cantidadParsed >= 0) {
+                p.stock = cantidadParsed;
+                actualizarTodo();
+            } else {
+                alert("Por favor ingresa un número válido.");
+            }
+        }
     }
 
     function actualizarLabelCantidad() {
