@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestión - Fábrica de Tortillas</title>
     
-    <!-- SDK Modular de Firebase -->
+    <!-- SDK de Firebase con tus credenciales de STOCK DE FABRICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
@@ -23,7 +23,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let productosPorDefecto = [
+        let productosIniciales = [
             { id: "p1", nombre: "TRIGO 20CM", unidad: "Trigo", precio: 1.00, stock: 0 },
             { id: "p2", nombre: "TRIGO 25CM", unidad: "Trigo", precio: 1.70, stock: 0 },
             { id: "p3", nombre: "TRIGO 30CM", unidad: "Trigo", precio: 2.00, stock: 0 },
@@ -36,6 +36,7 @@
         let productos = [];
         let clientes = [];
         let ventas = [];
+        
         let editandoId = null;
         let editandoClienteId = null;
 
@@ -44,13 +45,13 @@
             document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(idSeccion).classList.add('active');
             btn.classList.add('active');
-        };
+        }
 
         async function iniciarSincronizacion() {
             try {
                 const snapshotCheck = await getDocs(collection(db, "tortillas_productos"));
                 if (snapshotCheck.empty) {
-                    for (let p of productosPorDefecto) {
+                    for (let p of productosIniciales) {
                         await setDoc(doc(db, "tortillas_productos", p.id), p);
                     }
                 }
@@ -58,35 +59,38 @@
                 console.error("Error al inicializar productos:", e);
             }
 
+            // Sincronizar Productos en tiempo real
             onSnapshot(collection(db, "tortillas_productos"), (snapshot) => {
                 productos = [];
                 snapshot.forEach(docSnap => {
                     productos.push({ id: docSnap.id, ...docSnap.data() });
                 });
-                renderizarTodo();
+                actualizarTodo();
                 document.getElementById('syncStatus').innerText = "🟢 Sincronizado con la nube";
             }, (error) => {
                 document.getElementById('syncStatus').innerText = "🔴 Error de conexión con la nube";
             });
 
+            // Sincronizar Clientes en tiempo real
             onSnapshot(collection(db, "tortillas_clientes"), (snapshot) => {
                 clientes = [];
                 snapshot.forEach(docSnap => {
                     clientes.push({ id: docSnap.id, ...docSnap.data() });
                 });
-                renderizarTodo();
+                actualizarTodo();
             });
 
+            // Sincronizar Ventas en tiempo real
             onSnapshot(collection(db, "tortillas_ventas"), (snapshot) => {
                 ventas = [];
                 snapshot.forEach(docSnap => {
                     ventas.push({ id: docSnap.id, ...docSnap.data() });
                 });
-                renderizarTodo();
+                actualizarTodo();
             });
         }
 
-        function renderizarTodo() {
+        function actualizarTodo() {
             let resumenTrigoHtml = '';
             let resumenMaizHtml = '';
             let selectVentaProdHtml = '';
@@ -151,6 +155,7 @@
                 `;
             });
 
+            // Clientes
             let selectClienteHtml = '';
             let tablaClientesHtml = '';
             clientes.forEach((c) => {
@@ -168,11 +173,12 @@
                 `;
             });
 
+            // Historial Ventas
             let tablaVentasHtml = '';
             if (ventas.length === 0) {
                 tablaVentasHtml = `<tr><td colspan="4">No hay ventas registradas aún.</td></tr>`;
             } else {
-                ventas.forEach(v => {
+                ventas.slice().reverse().forEach(v => {
                     tablaVentasHtml += `
                         <tr>
                             <td><b>${v.cliente}</b></td>
@@ -184,6 +190,7 @@
                 });
             }
 
+            // Renderizar en pantalla
             document.getElementById('resumenTrigo').innerHTML = resumenTrigoHtml || `<tr><td colspan="5">Sin productos de trigo.</td></tr>`;
             document.getElementById('resumenMaiz').innerHTML = resumenMaizHtml || `<tr><td colspan="6">Sin productos de maíz.</td></tr>`;
             document.getElementById('ventaProductoSelect').innerHTML = selectVentaProdHtml;
@@ -194,6 +201,7 @@
             document.getElementById('tablaClientes').innerHTML = tablaClientesHtml;
             document.getElementById('tablaHistorialVentas').innerHTML = tablaVentasHtml;
 
+            // KPIs
             document.getElementById('kpiValorTotal').innerText = `$${valorTotalGeneral.toFixed(2)}`;
             document.getElementById('kpiTotalClientes').innerText = clientes.length;
             document.getElementById('kpiTotalVentas').innerText = `$${totalVentasDinero.toFixed(2)}`;
@@ -208,7 +216,7 @@
                 document.getElementById('ventaPrecio').value = p.precio;
                 document.getElementById('ventaLabelCantidad').innerText = p.unidad === "Trigo" ? "Cantidad (Unidades):" : "Cantidad (Kilos):";
             }
-        };
+        }
 
         window.procesarVenta = async function() {
             let clienteNombre = document.getElementById('ventaClienteSelect').value;
@@ -240,8 +248,8 @@
             });
 
             document.getElementById('ventaCantidad').value = '';
-            alert("¡Venta registrada con éxito y stock actualizado en la nube!");
-        };
+            alert("¡Venta registrada con éxito y stock descontado!");
+        }
 
         window.registrarProduccion = async function() {
             let prodId = document.getElementById('stockProductoSelect').value;
@@ -257,8 +265,8 @@
 
             await updateDoc(doc(db, "tortillas_productos", p.id), { stock: nuevoStock });
             document.getElementById('stockCantidad').value = '';
-            alert("¡Producción registrada en la nube!");
-        };
+            alert("¡Producción registrada con éxito!");
+        }
 
         window.corregirStock = async function(id) {
             let p = productos.find(x => x.id === id);
@@ -266,7 +274,7 @@
             if (nuevo !== null && !isNaN(parseFloat(nuevo))) {
                 await updateDoc(doc(db, "tortillas_productos", id), { stock: parseFloat(nuevo) });
             }
-        };
+        }
 
         window.guardarProducto = async function() {
             let nombre = document.getElementById('nuevoNombre').value.trim().toUpperCase();
@@ -289,7 +297,7 @@
             document.getElementById('nuevoNombre').value = '';
             document.getElementById('nuevoPrecio').value = '';
             alert("¡Producto guardado con éxito!");
-        };
+        }
 
         window.cargarEdicionProducto = function(id) {
             let p = productos.find(x => x.id === id);
@@ -298,13 +306,13 @@
             document.getElementById('nuevoPrecio').value = p.precio;
             editandoId = id;
             window.cambiarSeccion('seccionProductos', document.querySelectorAll('.menu-btn')[3]);
-        };
+        }
 
         window.eliminarProducto = async function(id) {
             if (confirm("¿Deseas eliminar este producto?")) {
                 await deleteDoc(doc(db, "tortillas_productos", id));
             }
-        };
+        }
 
         window.guardarCliente = async function() {
             let nombre = document.getElementById('clienteNombre').value.trim();
@@ -325,7 +333,7 @@
             document.getElementById('clienteTelefono').value = '';
             document.getElementById('clienteDireccion').value = '';
             alert("¡Cliente guardado con éxito!");
-        };
+        }
 
         window.cargarEdicionCliente = function(id) {
             let c = clientes.find(x => x.id === id);
@@ -334,25 +342,30 @@
             document.getElementById('clienteDireccion').value = c.direccion;
             editandoClienteId = id;
             window.cambiarSeccion('seccionClientes', document.querySelectorAll('.menu-btn')[4]);
-        };
+        }
 
         window.eliminarCliente = async function(id) {
             if (confirm("¿Eliminar cliente?")) {
                 await deleteDoc(doc(db, "tortillas_clientes", id));
             }
-        };
+        }
 
+        // Iniciar conexión con Firebase
         iniciarSincronizacion();
     </script>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; font-size: 24px; margin-bottom: 20px; }
+        
+        /* MENÚ DE NAVEGACIÓN */
         .menu-nav { display: flex; flex-wrap: wrap; gap: 5px; background: #2c3e50; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
         .menu-btn { background: #34495e; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; flex: 1; text-align: center; }
         .menu-btn:hover, .menu-btn.active { background: #28a745; font-weight: bold; }
+
         .section { display: none; margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
         .section.active { display: block; }
+        
         h2 { font-size: 18px; margin-top: 0; color: #495057; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         select, input { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
@@ -381,6 +394,7 @@
     <h1>Control de Fábrica - Tortillas y Ventas</h1>
     <div class="sync-status" id="syncStatus">🔄 Conectando con la nube...</div>
 
+    <!-- MENÚ DESPLEGABLE / PESTAÑAS -->
     <div class="menu-nav">
         <button class="menu-btn active" onclick="cambiarSeccion('seccionResumen', this)">📊 Resumen General</button>
         <button class="menu-btn" onclick="cambiarSeccion('seccionVentas', this)">🛒 Registrar Venta / Salida</button>
@@ -470,7 +484,7 @@
         </table>
     </div>
 
-    <!-- 3. REGISTRAR STOCK -->
+    <!-- 3. REGISTRAR STOCK (PRODUCCIÓN) -->
     <div id="seccionStock" class="section">
         <h2>Control de Bodega - Entradas y Correcciones</h2>
         <label>Producto:</label>
@@ -534,7 +548,7 @@
 
     <!-- 5. GESTIÓN DE CLIENTES -->
     <div id="seccionClientes" class="section">
-        <h2>Gestión de Clientes y Locales</h2>
+        <h2>Gestionar Clientes y Locales</h2>
         <div style="display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 10px; align-items: end;">
             <div>
                 <label>Nombre del Cliente / Local:</label>
