@@ -3,12 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Tortillas y Clientes - Fábrica</title>
+    <title>Sistema de Gestión - Fábrica de Tortillas</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; font-size: 24px; }
-        .section { margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
+        h1 { text-align: center; color: #2c3e50; font-size: 24px; margin-bottom: 20px; }
+        
+        /* MENÚ DE NAVEGACIÓN */
+        .menu-nav { display: flex; flex-wrap: wrap; gap: 5px; background: #2c3e50; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
+        .menu-btn { background: #34495e; color: white; border: none; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; flex: 1; text-align: center; }
+        .menu-btn:hover, .menu-btn.active { background: #28a745; font-weight: bold; }
+
+        .section { display: none; margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
+        .section.active { display: block; }
+        
         h2 { font-size: 18px; margin-top: 0; color: #495057; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         select, input { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
@@ -24,31 +32,45 @@
         .btn-stock { background: #ffc107; color: #000; padding: 5px 10px; font-size: 12px; width: auto; font-weight: bold; }
         .btn-stock:hover { background: #e0a800; }
         .total-box { font-size: 18px; font-weight: bold; text-align: right; margin-top: 15px; color: #2c3e50; }
+        .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .kpi-card { background: white; padding: 15px; border-radius: 6px; border-left: 5px solid #28a745; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
+        .kpi-card h3 { margin: 0; font-size: 14px; color: #6c757d; }
+        .kpi-card p { margin: 10px 0 0; font-size: 20px; font-weight: bold; color: #2c3e50; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Control de Stock, Producción, Valorizado y Clientes</h1>
+    <h1>Control de Fábrica - Tortillas y Ventas</h1>
 
-    <!-- FORMULARIO DE MOVIMIENTOS -->
-    <div class="section">
-        <h2>Registrar Entrada (Producción) o Salida (Venta/Despacho)</h2>
-        <label>Producto:</label>
-        <select id="productoSelect" onchange="actualizarLabelCantidad()"></select>
-
-        <label id="labelCantidad">Cantidad:</label>
-        <input type="number" id="cantidad" placeholder="Ej. 10" min="0.1" step="any">
-
-        <div style="display: flex; gap: 10px;">
-            <button onclick="registrar('entrada')">➕ Registrar Producción (Entrada)</button>
-            <button class="out" onclick="registrar('salida')">➖ Registrar Salida (Venta/Despacho)</button>
-        </div>
+    <!-- MENÚ DESPLEGABLE / PESTAÑAS -->
+    <div class="menu-nav">
+        <button class="menu-btn active" onclick="cambiarSeccion('seccionResumen', this)">📊 Resumen General</button>
+        <button class="menu-btn" onclick="cambiarSeccion('seccionVentas', this)">🛒 Registrar Venta / Salida</button>
+        <button class="menu-btn" onclick="cambiarSeccion('seccionStock', this)">📦 Registrar Stock (Producción)</button>
+        <button class="menu-btn" onclick="cambiarSeccion('seccionProductos', this)">🏷️ Gestionar Productos</button>
+        <button class="menu-btn" onclick="cambiarSeccion('seccionClientes', this)">👤 Gestionar Clientes</button>
     </div>
 
-    <!-- TABLA 1: TORTILLAS DE TRIGO -->
-    <div class="section">
-        <h2>Inventario - Tortillas de Trigo (Unidades / Paquetes de 100 u.)</h2>
+    <!-- 1. RESUMEN GENERAL -->
+    <div id="seccionResumen" class="section active">
+        <h2>Resumen del Inventario y Estado Actual</h2>
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <h3>Valor Total del Inventario</h3>
+                <p id="kpiValorTotal">$0.00</p>
+            </div>
+            <div class="kpi-card" style="border-left-color: #007bff;">
+                <h3>Total Clientes Registrados</h3>
+                <p id="kpiTotalClientes">0</p>
+            </div>
+            <div class="kpi-card" style="border-left-color: #ffc107;">
+                <h3>Total Ventas Registradas</h3>
+                <p id="kpiTotalVentas">$0.00</p>
+            </div>
+        </div>
+
+        <h3>Inventario - Tortillas de Trigo</h3>
         <table>
             <thead>
                 <tr>
@@ -56,36 +78,87 @@
                     <th>Unidades Totales</th>
                     <th>Paquetes (de 100 u.)</th>
                     <th>Precio Unitario</th>
-                    <th>Valor Total Stock</th>
-                    <th>Acción / Corregir</th>
+                    <th>Valor Total</th>
                 </tr>
             </thead>
-            <tbody id="tablaTrigo"></tbody>
+            <tbody id="resumenTrigo"></tbody>
         </table>
-    </div>
 
-    <!-- TABLA 2: MAÍZ Y NACHOS -->
-    <div class="section">
-        <h2>Inventario - Maíz y Nachos (Kilos / Paquetes)</h2>
+        <h3 style="margin-top: 25px;">Inventario - Maíz y Nachos</h3>
         <table>
             <thead>
                 <tr>
                     <th>Producto</th>
-                    <th>Unidad de Medida</th>
+                    <th>Categoría</th>
                     <th>Kilos Totales</th>
                     <th>Paquetes / Conversión</th>
                     <th>Precio Unitario</th>
-                    <th>Valor Total Stock</th>
-                    <th>Acción / Corregir</th>
+                    <th>Valor Total</th>
                 </tr>
             </thead>
-            <tbody id="tablaMaiz"></tbody>
+            <tbody id="resumenMaiz"></tbody>
         </table>
-        <div class="total-box" id="valorTotalGeneral">Valor Total Inventario: $0.00</div>
     </div>
 
-    <!-- GESTIÓN DE PRODUCTOS -->
-    <div class="section">
+    <!-- 2. REGISTRAR VENTA / DESPACHO -->
+    <div id="seccionVentas" class="section">
+        <h2>Registrar Venta o Despacho a Cliente</h2>
+        <label>Seleccionar Cliente:</label>
+        <select id="ventaClienteSelect"></select>
+
+        <label>Seleccionar Producto:</label>
+        <select id="ventaProductoSelect" onchange="actualizarPrecioVenta()"></select>
+
+        <label>Precio Unitario ($):</label>
+        <input type="number" id="ventaPrecio" step="0.01">
+
+        <label id="ventaLabelCantidad">Cantidad a Despachar:</label>
+        <input type="number" id="ventaCantidad" placeholder="Ej. 5" min="0.1" step="any">
+
+        <button onclick="procesarVenta()" style="background:#007bff;">💳 Confirmar Venta y Descontar Stock</button>
+
+        <h3 style="margin-top: 25px;">Historial de Ventas Recientes</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Total Pagado</th>
+                </tr>
+            </thead>
+            <tbody id="tablaHistorialVentas">
+                <tr><td colspan="4">No hay ventas registradas aún.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3. REGISTRAR STOCK (PRODUCCIÓN) -->
+    <div id="seccionStock" class="section">
+        <h2>Control de Bodega - Entradas y Correcciones</h2>
+        <label>Producto:</label>
+        <select id="stockProductoSelect"></select>
+
+        <label>Cantidad a Ingresar (Producción):</label>
+        <input type="number" id="stockCantidad" placeholder="Ej. 100" min="0.1" step="any">
+
+        <button onclick="registrarProduccion()">➕ Registrar Producción (Entrada)</button>
+
+        <h3 style="margin-top: 25px;">Ajuste Rápido de Inventario</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Stock Actual</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="tablaAjusteStock"></tbody>
+        </table>
+    </div>
+
+    <!-- 4. GESTIÓN DE PRODUCTOS -->
+    <div id="seccionProductos" class="section">
         <h2>Gestionar Productos y Precios</h2>
         <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; gap: 10px; align-items: end;">
             <div>
@@ -118,13 +191,13 @@
                     <th>Acciones</th>
                 </tr>
             </thead>
-            <tbody id="tablaGestion"></tbody>
+            <tbody id="tablaGestionProductos"></tbody>
         </table>
     </div>
 
-    <!-- GESTIÓN DE CLIENTES -->
-    <div class="section">
-        <h2>Gestión de Clientes</h2>
+    <!-- 5. GESTIÓN DE CLIENTES -->
+    <div id="seccionClientes" class="section">
+        <h2>Gestión de Clientes y Locales</h2>
         <div style="display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 10px; align-items: end;">
             <div>
                 <label>Nombre del Cliente / Local:</label>
@@ -155,6 +228,7 @@
             <tbody id="tablaClientes"></tbody>
         </table>
     </div>
+
 </div>
 
 <script>
@@ -168,47 +242,53 @@
         { nombre: "NACHOS CHICA MARIA", unidad: "Kilos General", precio: 47.00, stock: 0 }
     ];
 
-    let productos = JSON.parse(localStorage.getItem('productos_tortillas_sep')) || productosIniciales;
-    let clientes = JSON.parse(localStorage.getItem('clientes_tortillas_sep')) || [];
+    let productos = JSON.parse(localStorage.getItem('productos_menu_v1')) || productosIniciales;
+    let clientes = JSON.parse(localStorage.getItem('clientes_menu_v1')) || [];
+    let ventas = JSON.parse(localStorage.getItem('ventas_menu_v1')) || [];
     
     let editandoIndex = null;
     let editandoClienteIndex = null;
 
+    function cambiarSeccion(idSeccion, btn) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(idSeccion).classList.add('active');
+        btn.classList.add('active');
+    }
+
     function actualizarTodo() {
-        let selectHtml = '';
-        let tablaTrigoHtml = '';
-        let tablaMaizHtml = '';
-        let tablaGestionHtml = '';
+        let resumenTrigoHtml = '';
+        let resumenMaizHtml = '';
+        let selectVentaProdHtml = '';
+        let selectStockProdHtml = '';
+        let tablaAjusteStockHtml = '';
+        let tablaGestionProdHtml = '';
         let valorTotalGeneral = 0;
+        let totalVentasDinero = 0;
+
+        ventas.forEach(v => totalVentasDinero += v.total);
 
         productos.forEach((p, index) => {
-            selectHtml += `<option value="${index}">${p.nombre} (${p.unidad})</option>`;
-
             let valorStock = p.stock * p.precio;
             valorTotalGeneral += valorStock;
 
+            selectVentaProdHtml += `<option value="${index}">${p.nombre} ($${p.precio.toFixed(2)})</option>`;
+            selectStockProdHtml += `<option value="${index}">${p.nombre} (${p.unidad})</option>`;
+
             if (p.unidad === "Trigo") {
-                let paquetesTrigo = (p.stock / 100).toFixed(1);
-                tablaTrigoHtml += `
+                let paqTrigo = (p.stock / 100).toFixed(1);
+                resumenTrigoHtml += `
                     <tr>
                         <td><b>${p.nombre}</b></td>
                         <td><b>${p.stock} un.</b></td>
-                        <td>${paquetesTrigo} paq. (100 u.)</td>
+                        <td>${paqTrigo} paq. (100 u.)</td>
                         <td>$${p.precio.toFixed(2)}</td>
                         <td><b>$${valorStock.toFixed(2)}</b></td>
-                        <td><button class="btn-stock" onclick="corregirStock(${index})">✏️ Ajustar Stock</button></td>
                     </tr>
                 `;
             } else {
-                let conversion = "-";
-                if (p.unidad === "Maíz Cortado") {
-                    let paqMaiz = (p.stock / 6).toFixed(1);
-                    conversion = `${paqMaiz} paq. de 6kg`;
-                } else {
-                    conversion = `${p.stock} kg`;
-                }
-
-                tablaMaizHtml += `
+                let conversion = p.unidad === "Maíz Cortado" ? `${(p.stock / 6).toFixed(1)} paq. de 6kg` : `${p.stock} kg`;
+                resumenMaizHtml += `
                     <tr>
                         <td><b>${p.nombre}</b></td>
                         <td>${p.unidad}</td>
@@ -216,12 +296,19 @@
                         <td>${conversion}</td>
                         <td>$${p.precio.toFixed(2)}</td>
                         <td><b>$${valorStock.toFixed(2)}</b></td>
-                        <td><button class="btn-stock" onclick="corregirStock(${index})">✏️ Ajustar Stock</button></td>
                     </tr>
                 `;
             }
 
-            tablaGestionHtml += `
+            tablaAjusteStockHtml += `
+                <tr>
+                    <td><b>${p.nombre}</b></td>
+                    <td><b>${p.stock}</b></td>
+                    <td><button class="btn-stock" onclick="corregirStock(${index})">✏️ Ajustar</button></td>
+                </tr>
+            `;
+
+            tablaGestionProdHtml += `
                 <tr>
                     <td>${p.nombre}</td>
                     <td>${p.unidad}</td>
@@ -234,14 +321,11 @@
             `;
         });
 
-        document.getElementById('productoSelect').innerHTML = selectHtml;
-        document.getElementById('tablaTrigo').innerHTML = tablaTrigoHtml || `<tr><td colspan="6">No hay productos de trigo registrados.</td></tr>`;
-        document.getElementById('tablaMaiz').innerHTML = tablaMaizHtml || `<tr><td colspan="7">No hay productos de maíz registrados.</td></tr>`;
-        document.getElementById('tablaGestion').innerHTML = tablaGestionHtml;
-        document.getElementById('valorTotalGeneral').innerText = `Valor Total Inventario: $${valorTotalGeneral.toFixed(2)}`;
-
+        // Clientes
+        let selectClienteHtml = '';
         let tablaClientesHtml = '';
         clientes.forEach((c, index) => {
+            selectClienteHtml += `<option value="${c.nombre}">${c.nombre}</option>`;
             tablaClientesHtml += `
                 <tr>
                     <td><b>${c.nombre}</b></td>
@@ -254,61 +338,110 @@
                 </tr>
             `;
         });
-        document.getElementById('tablaClientes').innerHTML = tablaClientesHtml;
 
-        localStorage.setItem('productos_tortillas_sep', JSON.stringify(productos));
-        localStorage.setItem('clientes_tortillas_sep', JSON.stringify(clientes));
-        actualizarLabelCantidad();
+        // Historial Ventas
+        let tablaVentasHtml = '';
+        if (ventas.length === 0) {
+            tablaVentasHtml = `<tr><td colspan="4">No hay ventas registradas aún.</td></tr>`;
+        } else {
+            ventas.slice().reverse().forEach(v => {
+                tablaVentasHtml += `
+                    <tr>
+                        <td><b>${v.cliente}</b></td>
+                        <td>${v.producto}</td>
+                        <td>${v.cantidad}</td>
+                        <td><b>$${v.total.toFixed(2)}</b></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Renderizar en pantalla
+        document.getElementById('resumenTrigo').innerHTML = resumenTrigoHtml || `<tr><td colspan="5">Sin productos de trigo.</td></tr>`;
+        document.getElementById('resumenMaiz').innerHTML = resumenMaizHtml || `<tr><td colspan="6">Sin productos de maíz.</td></tr>`;
+        document.getElementById('ventaProductoSelect').innerHTML = selectVentaProdHtml;
+        document.getElementById('ventaClienteSelect').innerHTML = selectClienteHtml || `<option value="General">Público General</option>`;
+        document.getElementById('stockProductoSelect').innerHTML = selectStockProdHtml;
+        document.getElementById('tablaAjusteStock').innerHTML = tablaAjusteStockHtml;
+        document.getElementById('tablaGestionProductos').innerHTML = tablaGestionProdHtml;
+        document.getElementById('tablaClientes').innerHTML = tablaClientesHtml;
+        document.getElementById('tablaHistorialVentas').innerHTML = tablaVentasHtml;
+
+        // KPIs
+        document.getElementById('kpiValorTotal').innerText = `$${valorTotalGeneral.toFixed(2)}`;
+        document.getElementById('kpiTotalClientes').innerText = clientes.length;
+        document.getElementById('kpiTotalVentas').innerText = `$${totalVentasDinero.toFixed(2)}`;
+
+        // Guardar
+        localStorage.setItem('productos_menu_v1', JSON.stringify(productos));
+        localStorage.setItem('clientes_menu_v1', JSON.stringify(clientes));
+        localStorage.setItem('ventas_menu_v1', JSON.stringify(ventas));
+        actualizarPrecioVenta();
+    }
+
+    function actualizarPrecioVenta() {
+        let index = document.getElementById('ventaProductoSelect').value;
+        if(productos[index]) {
+            document.getElementById('ventaPrecio').value = productos[index].precio;
+            let p = productos[index];
+            document.getElementById('ventaLabelCantidad').innerText = p.unidad === "Trigo" ? "Cantidad (Unidades):" : "Cantidad (Kilos):";
+        }
+    }
+
+    function procesarVenta() {
+        let clienteIdx = document.getElementById('ventaClienteSelect').value;
+        let productoIdx = document.getElementById('ventaProductoSelect').value;
+        let cantidad = parseFloat(document.getElementById('ventaCantidad').value);
+        let precio = parseFloat(document.getElementById('ventaPrecio').value);
+
+        if (isNaN(cantidad) || cantidad <= 0 || isNaN(precio)) {
+            alert("Por favor ingresa una cantidad y precio válidos.");
+            return;
+        }
+
+        let p = productos[productoIdx];
+        if (p.stock < cantidad) {
+            alert(`¡Stock insuficiente! Solo tienes ${p.stock} disponible.`);
+            return;
+        }
+
+        p.stock -= cantidad;
+        let totalVenta = cantidad * precio;
+
+        ventas.push({
+            cliente: clienteIdx,
+            producto: p.nombre,
+            cantidad: cantidad,
+            total: totalVenta
+        });
+
+        document.getElementById('ventaCantidad').value = '';
+        alert("¡Venta registrada con éxito y stock descontado!");
+        actualizarTodo();
+    }
+
+    function registrarProduccion() {
+        let index = document.getElementById('stockProductoSelect').value;
+        let cantidad = parseFloat(document.getElementById('stockCantidad').value);
+
+        if (isNaN(cantidad) || cantidad <= 0) {
+            alert("Ingresa una cantidad válida.");
+            return;
+        }
+
+        productos[index].stock += cantidad;
+        document.getElementById('stockCantidad').value = '';
+        alert("¡Producción registrada con éxito!");
+        actualizarTodo();
     }
 
     function corregirStock(index) {
         let p = productos[index];
-        let nuevoValor = prompt(`Ajustar stock actual para ${p.nombre}:\nIngresa la cantidad real exacta en ${p.unidad === 'Trigo' ? 'Unidades' : 'Kilos'}:`, p.stock);
-        
-        if (nuevoValor !== null) {
-            let cantidadParsed = parseFloat(nuevoValor);
-            if (!isNaN(cantidadParsed) && cantidadParsed >= 0) {
-                p.stock = cantidadParsed;
-                actualizarTodo();
-            } else {
-                alert("Por favor ingresa un número válido.");
-            }
+        let nuevo = prompt(`Ajustar stock para ${p.nombre}:`, p.stock);
+        if (nuevo !== null && !isNaN(parseFloat(nuevo))) {
+            p.stock = parseFloat(nuevo);
+            actualizarTodo();
         }
-    }
-
-    function actualizarLabelCantidad() {
-        let index = document.getElementById('productoSelect').value;
-        if(productos[index]) {
-            let p = productos[index];
-            if(p.unidad === "Trigo") {
-                document.getElementById('labelCantidad').innerText = "Cantidad (en Unidades totales de trigo):";
-            } else {
-                document.getElementById('labelCantidad').innerText = "Cantidad (en Kilos totales):";
-            }
-        }
-    }
-
-    function registrar(tipo) {
-        let index = document.getElementById('productoSelect').value;
-        let cantidad = parseFloat(document.getElementById('cantidad').value);
-
-        if (isNaN(cantidad) || cantidad <= 0) {
-            alert("Por favor ingresa una cantidad válida.");
-            return;
-        }
-
-        if (tipo === 'entrada') {
-            productos[index].stock += cantidad;
-        } else {
-            if (productos[index].stock < cantidad) {
-                alert("¡Cuidado! No hay suficiente stock para esta salida.");
-                return;
-            }
-            productos[index].stock -= cantidad;
-        }
-
-        document.getElementById('cantidad').value = '';
-        actualizarTodo();
     }
 
     function guardarProducto() {
@@ -316,18 +449,16 @@
         let unidad = document.getElementById('nuevaUnidad').value;
         let precio = parseFloat(document.getElementById('nuevoPrecio').value);
 
-        if (!nombre || isNaN(precio) || precio < 0) {
-            alert("Ingresa un nombre y un precio válido.");
+        if (!nombre || isNaN(precio)) {
+            alert("Completa los datos del producto.");
             return;
         }
 
         if (editandoIndex !== null) {
-            productos[editandoIndex].nombre = nombre;
-            productos[editandoIndex].unidad = unidad;
-            productos[editandoIndex].precio = precio;
+            productos[editandoIndex] = { nombre, unidad, precio, stock: productos[editandoIndex].stock };
             editandoIndex = null;
         } else {
-            productos.push({ nombre: nombre, unidad: unidad, precio: precio, stock: 0 });
+            productos.push({ nombre, unidad, precio, stock: 0 });
         }
 
         document.getElementById('nuevoNombre').value = '';
@@ -340,11 +471,11 @@
         document.getElementById('nuevaUnidad').value = productos[index].unidad;
         document.getElementById('nuevoPrecio').value = productos[index].precio;
         editandoIndex = index;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        cambiarSeccion('seccionProductos', document.querySelectorAll('.menu-btn')[3]);
     }
 
     function eliminarProducto(index) {
-        if (confirm(`¿Seguro que deseas eliminar ${productos[index].nombre}?`)) {
+        if (confirm("¿Deseas eliminar este producto?")) {
             productos.splice(index, 1);
             actualizarTodo();
         }
@@ -355,18 +486,13 @@
         let telefono = document.getElementById('clienteTelefono').value.trim();
         let direccion = document.getElementById('clienteDireccion').value.trim();
 
-        if (!nombre) {
-            alert("Por favor ingresa al menos el nombre del cliente.");
-            return;
-        }
+        if (!nombre) { alert("Ingresa el nombre del cliente."); return; }
 
         if (editandoClienteIndex !== null) {
-            clientes[editandoClienteIndex].nombre = nombre;
-            clientes[editandoClienteIndex].telefono = telefono;
-            clientes[editandoClienteIndex].direccion = direccion;
+            clientes[editandoClienteIndex] = { nombre, telefono, direccion };
             editandoClienteIndex = null;
         } else {
-            clientes.push({ nombre: nombre, telefono: telefono, direccion: direccion });
+            clientes.push({ nombre, telefono, direccion });
         }
 
         document.getElementById('clienteNombre').value = '';
@@ -380,11 +506,11 @@
         document.getElementById('clienteTelefono').value = clientes[index].telefono;
         document.getElementById('clienteDireccion').value = clientes[index].direccion;
         editandoClienteIndex = index;
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        cambiarSeccion('seccionClientes', document.querySelectorAll('.menu-btn')[4]);
     }
 
     function eliminarCliente(index) {
-        if (confirm(`¿Seguro que deseas eliminar al cliente ${clientes[index].nombre}?`)) {
+        if (confirm("¿Eliminar cliente?")) {
             clientes.splice(index, 1);
             actualizarTodo();
         }
