@@ -48,7 +48,6 @@
 
         async function iniciarSincronizacion() {
             try {
-                // Verificar si la colección de productos está vacía de forma segura una sola vez
                 const snapshotCheck = await getDocs(collection(db, "tortillas_productos"));
                 if (snapshotCheck.empty) {
                     for (let p of productosPorDefecto) {
@@ -59,7 +58,6 @@
                 console.error("Error al inicializar productos:", e);
             }
 
-            // Escuchar cambios en tiempo real (Productos)
             onSnapshot(collection(db, "tortillas_productos"), (snapshot) => {
                 productos = [];
                 snapshot.forEach(docSnap => {
@@ -71,7 +69,6 @@
                 document.getElementById('syncStatus').innerText = "🔴 Error de conexión con la nube";
             });
 
-            // Escuchar cambios en tiempo real (Clientes)
             onSnapshot(collection(db, "tortillas_clientes"), (snapshot) => {
                 clientes = [];
                 snapshot.forEach(docSnap => {
@@ -80,7 +77,6 @@
                 renderizarTodo();
             });
 
-            // Escuchar cambios en tiempo real (Ventas)
             onSnapshot(collection(db, "tortillas_ventas"), (snapshot) => {
                 ventas = [];
                 snapshot.forEach(docSnap => {
@@ -292,6 +288,7 @@
 
             document.getElementById('nuevoNombre').value = '';
             document.getElementById('nuevoPrecio').value = '';
+            alert("¡Producto guardado con éxito!");
         };
 
         window.cargarEdicionProducto = function(id) {
